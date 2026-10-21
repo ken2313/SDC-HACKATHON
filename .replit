@@ -1,0 +1,13 @@
+modules = ["python-3.11", "nodejs-20"]
+run = "bash run.sh"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["bash", "run.sh"]
+
+# The Vite dev server (frontend) is the one public URL. It forwards /api to FastAPI on port 8000.
+[[ports]]
+localPort = 5173
+externalPort = 80
