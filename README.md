@@ -14,8 +14,8 @@ We build **one feature at a time**.
 |---|---|---|
 | 1 | Inventory management | **Code complete. Team must run the checks below before relying on it** |
 | 2 | Automatic low-stock alerts | **Code complete. Team must run the checks below before relying on it** |
-| 3 | Automatic purchase order generation | Planned |
-| 4 | Human approval and activity logs (full RBAC + log page) | Planned (backend permission checks and audit-log writing already started in Feature 1) |
+| 3 | Automatic purchase order generation | **Code complete. Team must run the checks below before relying on it** |
+| 4 | Human approval and activity logs (full RBAC + log page) | Planned (owner-only approve/reject and audit-log writing already started in Features 1 to 3; the Activity Logs page is Feature 4) |
 | 5 | Supplier order tracking | Planned |
 | 6 | Supplier management | Planned |
 | 7 | Inventory dashboard | Planned |
@@ -35,6 +35,11 @@ We build **one feature at a time**.
 - [ ] `pytest -v` passes in `backend/` (includes the new `test_alerts_api.py`)
 - [ ] `npm run build` succeeds in `frontend/`
 - [ ] Manual alert demo below works in the browser
+
+**Feature 3**
+- [ ] `pytest -v` passes in `backend/` (includes the new `test_purchase_orders_api.py`)
+- [ ] `npm run build` succeeds in `frontend/`
+- [ ] Manual purchase order demo below works in the browser
 
 ## Technology stack
 
@@ -185,11 +190,57 @@ There are no create, edit or delete endpoints for alerts on purpose.
 5. Click **Add stock** on the Milk row and add 10 (back to 15, above 10). The alert disappears from "Open alerts" and appears under **Resolved** with reason "Stock replenished".
 6. Switch to **Aisyah Rahman (owner)**: on an alert row click **Reorder level**, lower it below the stock, and see the alert resolve. The employee has no such button.
 
+## Feature 3: Automatic purchase order generation
+
+**The workflow:** low-stock alert -> the system picks a supplier and a quantity -> **draft** purchase order -> the **owner** approves or rejects -> every step is written to the audit log. Nothing is ever ordered automatically.
+
+| Rule | Detail |
+|---|---|
+| **Trigger** | A stock change, a new reorder level, a restored product or a new product leaves a product low (open alert). The draft is prepared right after the change is saved. "Check restocking needs" does the same for every low product on demand. |
+| **Quantity** | Refill up to **2 x the reorder level**, never less than the supplier's minimum order. Milk: 5 left, level 10 -> 20 - 5 = **15 cartons**. |
+| **Supplier** | The **cheapest active supplier** that sells the product (tie: shorter delivery time). Prices come from the supplier price list (`supplier_products` table), in sen (RM x 100) so money has no rounding errors. |
+| **Grouping** | One draft per supplier. A second low product from the same supplier is added to the open draft. |
+| **No duplicates** | A product can be on only **one outstanding order**. Checked in code and enforced by a database index. A rejected order frees its products again. |
+| **Approval** | Only the **Owner** can approve or reject (backend returns 403 for employees). Rejecting needs a written reason. An order can be decided only once. |
+| **Editing** | Owner and Employee can change quantity, supplier (only suppliers that sell every product on the order) and the note of an order that is still waiting. Prices cannot be typed in. |
+| **No supplier price?** | The product is listed as "No supplier price on file" and skipped. No guess is made. |
+
+Order statuses used in this feature: `draft`, `approved`, `rejected`. The other statuses from the brief (`ordered`, `shipped`, `delivered`, `delayed`, `cancelled`) are defined already and used in Feature 5. We added `rejected` because the brief asks for rejecting orders.
+
+Set `AUTO_GENERATE_PO=false` in `.env` to switch automatic drafting off (the button still works). If drafting ever fails, the stock change that caused it is **not** affected.
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| GET | `/api/purchase-orders?status=all\|awaiting\|draft\|approved\|rejected...` | Owner, Employee | List orders with their lines |
+| GET | `/api/purchase-orders/summary` | Owner, Employee | Counts and value for the page header |
+| GET | `/api/purchase-orders/needs` | Owner, Employee | Low products without an order, with the recommendation |
+| POST | `/api/purchase-orders/generate` | Owner, Employee | Prepare drafts now |
+| GET | `/api/purchase-orders/{id}` | Owner, Employee | One order |
+| PATCH | `/api/purchase-orders/{id}` | Owner, Employee | Edit supplier / quantities / note (while waiting) |
+| DELETE | `/api/purchase-orders/{id}/lines/{line_id}` | Owner, Employee | Remove a product from an order (never the last one) |
+| POST | `/api/purchase-orders/{id}/approve` | **Owner only** | Approve |
+| POST | `/api/purchase-orders/{id}/reject` | **Owner only** | Reject (reason required) |
+
+Audit-log actions written: `po.generated`, `po.updated`, `po.line_removed`, `po.approved`, `po.rejected`.
+
+**Suppliers in this feature:** the `suppliers` and `supplier_products` tables exist now (with synthetic demo suppliers and prices) because an order needs a supplier and a price. The screens to add and edit suppliers arrive in Feature 6. A database created before Feature 3 gets the demo suppliers automatically on the next start. Products you added yourself (for example "Frozen Yoghurt") have no supplier price yet, so they appear as "No supplier price on file".
+
+### Manual demo (the milk order)
+
+1. Choose **Hafiz Ismail (employee)**. In **Inventory**, **Fresh Milk 1L**: **Stock** -> *Remove stock* -> 15 -> confirm (20 -> 5).
+2. The message says a draft order was prepared. Open **Purchase Orders**: **Awaiting approval** shows a draft from *Segar Dairy*: 15 cartons x RM 7.80 = **RM 117.00**.
+3. As the employee, note there are Edit buttons but **no Approve / Reject** (and `POST /api/purchase-orders/1/approve` with header `X-User-Id: 2` in http://127.0.0.1:8000/docs returns **403**).
+4. Click **Edit**, change the quantity to 24, save. The total updates and the line shows "(edited)".
+5. Remove 2 more milk from Inventory: still **one** draft, no duplicate.
+6. Switch to **Aisyah Rahman (owner)** -> Purchase Orders -> **Approve** -> confirm. Status becomes Approved with her name and time. (Or **Reject** with a reason, then press *Check restocking needs*: a fresh draft appears.)
+7. Press **Check restocking needs**: drafts appear for any other low products that have a supplier price (for example Cup Lids), grouped by supplier. Low products without a price are listed as "No supplier price on file".
+8. Optional: open `backend/data/inventory.db` and look at `purchase_orders`, `purchase_order_items` and the `po.*` rows in `activity_logs`.
+
 ## Orbyte integration assumptions
 
 We have no access to Orbyte's real APIs. The mock layer (`backend/app/integrations/orbyte_mock.py`) assumes a host platform would tell our module: which business is calling, which user, and their role. We turn the role into permissions and write completed actions to the audit log. In a real integration the `X-User-Id` header would be replaced by Orbyte's verified token.
 
-## Known limitations (Feature 1)
+## Known limitations (Features 1 to 3)
 
 - The simulated session has no passwords. It demonstrates role rules, not real security.
 - The supplier on a product is plain text until Feature 6.
@@ -198,6 +249,10 @@ We have no access to Orbyte's real APIs. The mock layer (`backend/app/integratio
 - Alerts are only shown on the Stock Alerts page. There is no email or push notification.
 - Urgency uses a simple documented rule (half the threshold), not a forecast. Forecast-based urgency arrives with Feature 8.
 - Quantities are whole numbers only.
+- Order quantity uses a fixed rule (refill to 2 x the reorder level). Forecast-based quantities arrive with Feature 8.
+- Approving an order does not contact a supplier. Placing, shipping and delivery are Feature 5 (simulated).
+- Archiving a product does not cancel an open order for it. Approval is blocked until the line is removed.
+- Supplier prices can only be changed in the database until Feature 6 adds the Suppliers screens.
 - Timestamps display in the browser's local time.
 
 ## Future improvements

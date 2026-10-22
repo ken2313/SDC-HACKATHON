@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.constants import MOVEMENT_INITIAL, ROLE_EMPLOYEE, ROLE_OWNER
-from app.models import Business, InventoryItem, StockMovement, User
+from app.models import Business, InventoryItem, StockMovement, Supplier, SupplierProduct, User
 from app.services.alert_service import reconcile_all
 
 # (sku, name, category, unit, quantity, reorder_threshold, supplier_name)
@@ -74,6 +74,74 @@ def _add_business(db: Session, name: str, owner: tuple, employee: tuple, items: 
             )
 
 
+# ---------------------------------------------------------------- suppliers (Feature 3)
+# supplier name -> (contact, phone, email, typical lead time in days,
+#                   {sku: (unit price in sen, minimum order quantity)})
+# 1 RM = 100 sen. All names, phone numbers and prices are made up.
+CAFE_SUPPLIERS = {
+    "Segar Dairy Sdn Bhd (demo)": ("Lim Wei Jie", "+60 3-5555 0101", "orders@segardairy.example", 1,
+                                   {"MILK-1L": (780, 6), "OATM-1L": (1150, 6)}),
+    "Kopi Borneo Trading (demo)": ("Jenny Anak Ruai", "+60 82-555 0102", "sales@kopiborneo.example", 4,
+                                   {"COFB-1KG": (6800, 2), "COFB-ROB": (4800, 2)}),
+    "Pasar Borong Jaya (demo)": ("Rajesh Kumar", "+60 3-5555 0103", "hello@pasarborong.example", 2,
+                                 {"SUGR-1KG": (380, 10), "TEHT-500": (1250, 4), "CHOC-500": (2450, 2),
+                                  "MILK-1L": (850, 12)}),  # a second, dearer milk supplier
+    "PakEco Packaging (demo)": ("Nurul Huda", "+60 7-555 0104", "sales@pakeco.example", 5,
+                                {"CUP-12OZ": (1200, 5), "LID-12OZ": (950, 5)}),
+    "Roti Segar Bakery Supply (demo)": ("Tan Mei Ling", "+60 3-5555 0105", "orders@rotisegar.example", 2,
+                                        {"CROI-FRZ": (4200, 2)}),
+}
+SHOP_SUPPLIERS = {
+    "Pak Mat Wholesale (demo)": ("Mat Zain", "+60 9-555 0201", "pakmat@wholesale.example", 3,
+                                 {"RICE-10KG": (3200, 5), "OIL-5L": (2800, 6), "NOOD-5PK": (690, 10),
+                                  "SOY-500": (520, 6), "FLOUR-1KG": (290, 10)}),
+    "Ladang Telur Sejahtera (demo)": ("Hajah Normah", "+60 9-555 0202", "telur@sejahtera.example", 1,
+                                      {"EGG-A30": (1750, 4)}),
+}
+SUPPLIERS_BY_BUSINESS = {
+    "Kopi Kita Café (demo)": CAFE_SUPPLIERS,
+    "Kedai Runcit Pak Din (demo)": SHOP_SUPPLIERS,
+}
+
+
+def seed_suppliers_if_missing(db: Session) -> bool:
+    """Give each demo business its synthetic suppliers and price list, but only if that
+    business has none yet. Safe to run on every start, and it also upgrades a database
+    that was created before Feature 3 existed. Returns True if anything was added."""
+    added = False
+    for business in db.scalars(select(Business)).all():
+        catalogue = SUPPLIERS_BY_BUSINESS.get(business.name)
+        if catalogue is None:
+            continue  # a business we did not create: leave it alone
+        if db.scalar(select(Supplier.id).where(Supplier.business_id == business.id).limit(1)) is not None:
+            continue
+        items_by_sku = {
+            item.sku: item
+            for item in db.scalars(select(InventoryItem).where(InventoryItem.business_id == business.id))
+        }
+        for name, (contact, phone, email, lead_days, products) in catalogue.items():
+            supplier = Supplier(
+                business_id=business.id, name=name, contact_name=contact, phone=phone,
+                email=email, typical_lead_time_days=lead_days,
+            )
+            db.add(supplier)
+            db.flush()
+            for sku, (price_sen, min_qty) in products.items():
+                item = items_by_sku.get(sku)
+                if item is None:
+                    continue  # the demo product was renamed or removed
+                db.add(
+                    SupplierProduct(
+                        business_id=business.id, supplier_id=supplier.id, item_id=item.id,
+                        unit_price_sen=price_sen, min_order_qty=min_qty,
+                    )
+                )
+        added = True
+    if added:
+        db.commit()
+    return added
+
+
 def seed_if_empty(db: Session) -> bool:
     """Create the demo data only when there are no businesses yet. Returns True if seeded."""
     if db.scalar(select(Business.id).limit(1)) is not None:
@@ -95,6 +163,7 @@ def seed_if_empty(db: Session) -> bool:
     )
     db.flush()
     reconcile_all(db)  # opens alerts for the demo products that start out low (also commits)
+    seed_suppliers_if_missing(db)
     return True
 
 
@@ -105,3 +174,4 @@ if __name__ == "__main__":
     Base.metadata.create_all(engine)
     with SessionLocal() as session:
         print("Seeded demo data." if seed_if_empty(session) else "Database already has data. Nothing changed.")
+        seed_suppliers_if_missing(session)

@@ -155,7 +155,9 @@ export default function Inventory() {
     } else {
       const verb = movement.quantity_change > 0 ? "Added" : "Removed";
       const alertNote = item.stock_status === "in_stock" ? "" : " A low-stock alert is active (see Stock Alerts).";
-      toast.success(`${verb} ${Math.abs(movement.quantity_change)} ${item.unit}. ${item.name} is now ${item.quantity} ${item.unit}.${alertNote}`);
+      const draft = result.draft_purchase_order;
+      const orderNote = draft ? ` Draft order ${draft.po_number} was prepared and is waiting for the owner's approval (see Purchase Orders).` : "";
+      toast.success(`${verb} ${Math.abs(movement.quantity_change)} ${item.unit}. ${item.name} is now ${item.quantity} ${item.unit}.${alertNote}${orderNote}`);
     }
     load();
   }

@@ -133,10 +133,18 @@ class MovementOut(BaseModel):
     created_at: UTCDateTime
 
 
+class DraftOrderRef(BaseModel):
+    """Set when the system prepared a purchase order draft because of this stock change."""
+
+    id: int
+    po_number: str
+
+
 class MovementResult(BaseModel):
     movement: MovementOut
     item: ItemOut
     already_applied: bool = False  # True when a retried request was recognised
+    draft_purchase_order: DraftOrderRef | None = None  # Feature 3
 
 
 class InventorySummary(BaseModel):

@@ -12,6 +12,7 @@ from app.auth.permissions import (
 from app.database import get_db
 from app.models import User
 from app.schemas.inventory import (
+    DraftOrderRef,
     InventorySummary,
     ItemCreate,
     ItemOut,
@@ -21,6 +22,7 @@ from app.schemas.inventory import (
     MovementResult,
 )
 from app.services import inventory_service as service
+from app.services import purchase_order_service
 from app.services.inventory_service import InventoryError
 
 router = APIRouter(prefix="/api/inventory", tags=["Inventory"])
@@ -33,6 +35,14 @@ StockRecorder = Annotated[User, Depends(require_permission(PERM_STOCK_RECORD))]
 
 def _raise_http(error: InventoryError) -> HTTPException:
     return HTTPException(status_code=error.status_code, detail=error.message)
+
+
+def _prepare_draft_if_low(db: Session, user: User, item) -> dict | None:
+    """Feature 3: when a product is low after a change, the system prepares a purchase order
+    DRAFT (never an approved order). Best-effort: it can never undo the stock change."""
+    if item.is_archived or item.stock_status == "in_stock":
+        return None
+    return purchase_order_service.auto_draft_for_item(db, user, item.id)
 
 
 @router.get("", response_model=list[ItemOut])
@@ -68,9 +78,11 @@ def inventory_categories(db: DbSession, user: Viewer):
 @router.post("", response_model=ItemOut, status_code=201)
 def create_product(data: ItemCreate, db: DbSession, user: Manager):
     try:
-        return service.create_item(db, user, data)
+        item = service.create_item(db, user, data)
     except InventoryError as error:
         raise _raise_http(error)
+    _prepare_draft_if_low(db, user, item)
+    return item
 
 
 @router.get("/{item_id}", response_model=ItemOut)
@@ -84,9 +96,11 @@ def get_product(item_id: int, db: DbSession, user: Viewer):
 @router.patch("/{item_id}", response_model=ItemOut)
 def edit_product(item_id: int, data: ItemUpdate, db: DbSession, user: Manager):
     try:
-        return service.update_item(db, user, item_id, data)
+        item = service.update_item(db, user, item_id, data)
     except InventoryError as error:
         raise _raise_http(error)
+    _prepare_draft_if_low(db, user, item)  # a higher reorder level can make a product low
+    return item
 
 
 @router.post("/{item_id}/archive", response_model=ItemOut)
@@ -100,9 +114,11 @@ def archive_product(item_id: int, db: DbSession, user: Manager):
 @router.post("/{item_id}/restore", response_model=ItemOut)
 def restore_product(item_id: int, db: DbSession, user: Manager):
     try:
-        return service.set_archived(db, user, item_id, archived=False)
+        item = service.set_archived(db, user, item_id, archived=False)
     except InventoryError as error:
         raise _raise_http(error)
+    _prepare_draft_if_low(db, user, item)
+    return item
 
 
 @router.post("/{item_id}/movements", response_model=MovementResult, status_code=201)
@@ -113,10 +129,12 @@ def record_stock_movement(item_id: int, data: MovementCreate, db: DbSession, use
         raise _raise_http(error)
     movement_user = db.get(User, movement.user_id)
     movement.user_name = movement_user.name if movement_user else None
+    draft = None if already_applied else _prepare_draft_if_low(db, user, item)
     return MovementResult(
         movement=MovementOut.model_validate(movement),
         item=ItemOut.model_validate(item),
         already_applied=already_applied,
+        draft_purchase_order=DraftOrderRef(**draft) if draft else None,
     )
 
 

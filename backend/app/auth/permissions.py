@@ -24,12 +24,21 @@ PERM_INVENTORY_VIEW = "inventory:view"
 PERM_INVENTORY_MANAGE = "inventory:manage"  # add / edit / archive products
 PERM_STOCK_RECORD = "stock:record"          # add or remove stock
 PERM_ALERTS_VIEW = "alerts:view"            # see low-stock alerts (Feature 2)
+PERM_ORDERS_VIEW = "orders:view"            # see purchase orders (Feature 3)
+PERM_ORDERS_PREPARE = "orders:prepare"      # generate and edit order drafts (Feature 3)
+PERM_ORDERS_APPROVE = "orders:approve"      # approve / reject orders: OWNER ONLY (Feature 3)
 # Changing a reorder threshold needs PERM_INVENTORY_MANAGE (owner only).
 
 # Feature 4 will extend this table (orders, approvals, logs, reports).
 ROLE_PERMISSIONS: dict[str, set[str]] = {
-    ROLE_OWNER: {PERM_INVENTORY_VIEW, PERM_INVENTORY_MANAGE, PERM_STOCK_RECORD, PERM_ALERTS_VIEW},
-    ROLE_EMPLOYEE: {PERM_INVENTORY_VIEW, PERM_STOCK_RECORD, PERM_ALERTS_VIEW},
+    ROLE_OWNER: {
+        PERM_INVENTORY_VIEW, PERM_INVENTORY_MANAGE, PERM_STOCK_RECORD, PERM_ALERTS_VIEW,
+        PERM_ORDERS_VIEW, PERM_ORDERS_PREPARE, PERM_ORDERS_APPROVE,
+    },
+    ROLE_EMPLOYEE: {
+        PERM_INVENTORY_VIEW, PERM_STOCK_RECORD, PERM_ALERTS_VIEW,
+        PERM_ORDERS_VIEW, PERM_ORDERS_PREPARE,  # can prepare orders, can NOT approve them
+    },
 }
 
 

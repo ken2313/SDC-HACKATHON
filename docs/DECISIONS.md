@@ -30,3 +30,23 @@ Short notes on *why* things are built the way they are. Useful for the proposal 
 | **Thresholds are edited through the existing inventory PATCH (owner only)** | One place to change them, one permission, one audit entry. The alert then reacts automatically. |
 | **Start-up scan (`reconcile_all`)** | Products that were already low before alerts existed would otherwise never get an alert. It is idempotent, so running it on every start is safe. |
 | **System actions are logged with no user** | The scan has no person behind it. The log stores `user_id = NULL`, which the Activity Logs page (Feature 4) will show as "System". |
+
+## Feature 3: purchase orders
+
+| Decision | Why |
+|---|---|
+| **The system only ever creates DRAFTS** | The brief requires human approval before consequential actions. No code path creates an approved order. Approval is a separate endpoint that only the owner role may call. |
+| **Reorder quantity = refill to 2 x the reorder level, at least the supplier minimum** | Simple, explainable to a shop owner, and the milk example gives 15 cartons (20 - 5). Feature 8 will replace it with a forecast-based quantity. |
+| **Supplier = cheapest active price, tie goes to shorter delivery** | A documented rule is easier to defend than a hidden one. The owner can still switch the supplier while the order is a draft. |
+| **Money stored as whole sen (RM x 100)** | No floating-point rounding errors in totals. The API shows RM with 2 decimals. |
+| **`suppliers` and `supplier_products` tables arrive now** | An order needs a real supplier and a price from stored records (brief, Feature 3). Feature 6 adds the screens, so no table has to be redesigned later. |
+| **One draft per supplier; new low products join it** | Fewer, bigger orders instead of one tiny order per product. Every addition is logged (`po.updated`). |
+| **A product can be on only one outstanding order** | Prevents duplicate orders for the same need. Code checks first; a partial unique index (`outstanding = 1`) makes the database refuse a duplicate even if two requests race. Rejecting an order turns `outstanding` off. |
+| **Auto-drafting runs AFTER the stock change is saved, in its own transaction** | A bug or failure in drafting can never undo or block a stock change. `AUTO_GENERATE_PO=false` switches it off. |
+| **Approve and reject use a guarded UPDATE (`WHERE status IN (draft, pending_approval)`)** | An order is decided exactly once, even with a double click or two people deciding at once. The loser gets a clear 409. |
+| **Edits re-check the status inside the transaction** | An edit cannot slip in after someone approved the order a moment earlier. |
+| **Prices cannot be typed into an order** | Prices come from the supplier price list, so an order cannot carry a made-up price. A supplier switch re-prices every line. |
+| **Rejection needs a reason** | The audit log then explains the decision, not only that it happened. |
+| **`rejected` added to the status list** | The brief asks for rejecting orders but its status list has no "rejected". |
+| **Employees may prepare and edit, not approve** | Matches the brief's role split. Full role-based rules and the Activity Logs page are Feature 4. |
+| **Unused columns (`received_quantity`, `inventory_applied`) already exist** | Feature 5 needs them to prevent a delivery adding stock twice. Adding them now avoids changing existing tables later. |
