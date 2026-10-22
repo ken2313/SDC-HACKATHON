@@ -6,6 +6,7 @@ import { ToastProvider } from "./context/ToastContext.jsx";
 import { NAV_ITEMS } from "./navigation.js";
 import ComingSoon from "./pages/ComingSoon.jsx";
 import Inventory from "./pages/Inventory.jsx";
+import StockAlerts from "./pages/StockAlerts.jsx";
 
 function AppRoutes() {
   const { status, error, retry, user } = useSession();
@@ -37,6 +38,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/inventory" replace />} />
         {/* key={user.id} reloads the page's data when the demo user is switched */}
         <Route path="inventory" element={<Inventory key={user.id} />} />
+        <Route path="stock-alerts" element={<StockAlerts key={user.id} />} />
         {NAV_ITEMS.filter((item) => !item.live).map((item) => (
           <Route
             key={item.path}

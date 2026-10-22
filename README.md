@@ -13,7 +13,7 @@ We build **one feature at a time**.
 | # | Feature | Status |
 |---|---|---|
 | 1 | Inventory management | **Code complete. Team must run the checks below before relying on it** |
-| 2 | Automatic low-stock alerts | Planned |
+| 2 | Automatic low-stock alerts | **Code complete. Team must run the checks below before relying on it** |
 | 3 | Automatic purchase order generation | Planned |
 | 4 | Human approval and activity logs (full RBAC + log page) | Planned (backend permission checks and audit-log writing already started in Feature 1) |
 | 5 | Supplier order tracking | Planned |
@@ -23,12 +23,18 @@ We build **one feature at a time**.
 | 9 | AI anomaly detection on RunPod GPU | Planned |
 | 10 | Simulated Orbyte integration | Started (session/role mock); grows with each feature |
 
-### Feature 1 verification checklist (tick when YOU have done it)
+### Verification checklist (tick when YOU have done it)
 
-- [ ] `pytest -v` passes in `backend/`
-- [ ] `npm run build` succeeds in `frontend/`
-- [ ] Manual demo steps below work in the browser
+**Feature 1** (confirmed by the team: tests, build and demo passed locally)
+- [x] `pytest -v` passes in `backend/`
+- [x] `npm run build` succeeds in `frontend/`
+- [x] Manual demo steps work in the browser
 - [ ] Replit run works (see Replit section)
+
+**Feature 2**
+- [ ] `pytest -v` passes in `backend/` (includes the new `test_alerts_api.py`)
+- [ ] `npm run build` succeeds in `frontend/`
+- [ ] Manual alert demo below works in the browser
 
 ## Technology stack
 
@@ -49,7 +55,7 @@ backend/
     models/            database tables
     schemas/           input validation / output shapes (Pydantic)
     routers/           HTTP endpoints (thin)
-    services/          business rules (stock, audit log)
+    services/          business rules (stock, alerts, audit log)
     auth/              simulated session + permission checks
     integrations/      orbyte_mock.py (SIMULATED), runpod_client.py (Feature 9)
     seed/              synthetic Malaysian SME data
@@ -144,6 +150,41 @@ Every request carries `X-User-Id` (simulated Orbyte session). Missing or unknown
 7. Switch to **Din Hassan** (*Kedai Runcit Pak Din*): a different business with different products.
 8. Optional: open `backend/data/inventory.db` in *DB Browser for SQLite* and look at `stock_movements` and `activity_logs`. (The Activity Logs page arrives in Feature 4.)
 
+## Feature 2: Automatic low-stock alerts
+
+**The rule:** a product gets an alert when it is not archived and its quantity is **at or below** its reorder threshold (Low Stock or Out of Stock).
+
+- Alerts open and close **automatically**, in the same database transaction as the stock change. Nobody creates or closes them by hand.
+- **No duplicates:** at most one open alert per product, enforced in the code and by a database rule (a partial unique index).
+- **Auto-resolve:** when stock goes back above the threshold, the alert is resolved and kept in the "Resolved" tab as history. If the product runs low again later, a new alert is opened.
+- **Urgent products:** open alerts are sorted most urgent first.
+
+| Urgency | Rule |
+|---|---|
+| Critical | quantity is 0 (out of stock) |
+| Urgent | quantity is half of the threshold or less |
+| Low | at or below the threshold, but not yet urgent |
+
+- **Custom thresholds:** the Owner changes a product's reorder level from the Stock Alerts page (or the Edit form in Inventory). The alert opens or closes straight away. Employees can see alerts and add stock, but cannot change thresholds (backend returns 403).
+- A **start-up scan** opens alerts for products that were already low before alerts existed. It is safe to repeat.
+- Alert opening and resolving are written to the audit log (`alert.opened`, `alert.resolved`).
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| GET | `/api/alerts?status=open\|resolved\|all` | Owner, Employee | List alerts (open ones most urgent first) |
+| GET | `/api/alerts/summary` | Owner, Employee | Counts for the page header |
+
+There are no create, edit or delete endpoints for alerts on purpose.
+
+### Manual demo (the milk alert)
+
+1. Choose **Hafiz Ismail (employee)**. Open **Stock Alerts**: you already see the demo products that start low (Chocolate Powder is Critical).
+2. Go to **Inventory**. On **Fresh Milk 1L** (20 cartons, reorder at 10) click **Stock**, remove **15**.
+3. The message says an alert is active. Open **Stock Alerts**: Milk shows **Urgent** (5 left, reorder at 10).
+4. Remove 2 more: still **one** alert for Milk (no duplicate).
+5. Click **Add stock** on the Milk row and add 10 (back to 15, above 10). The alert disappears from "Open alerts" and appears under **Resolved** with reason "Stock replenished".
+6. Switch to **Aisyah Rahman (owner)**: on an alert row click **Reorder level**, lower it below the stock, and see the alert resolve. The employee has no such button.
+
 ## Orbyte integration assumptions
 
 We have no access to Orbyte's real APIs. The mock layer (`backend/app/integrations/orbyte_mock.py`) assumes a host platform would tell our module: which business is calling, which user, and their role. We turn the role into permissions and write completed actions to the audit log. In a real integration the `X-User-Id` header would be replaced by Orbyte's verified token.
@@ -154,6 +195,8 @@ We have no access to Orbyte's real APIs. The mock layer (`backend/app/integratio
 - The supplier on a product is plain text until Feature 6.
 - The product list is not paginated (fine for SME-sized catalogues).
 - No Activity Logs page yet (Feature 4). Logs are written to the database already.
+- Alerts are only shown on the Stock Alerts page. There is no email or push notification.
+- Urgency uses a simple documented rule (half the threshold), not a forecast. Forecast-based urgency arrives with Feature 8.
 - Quantities are whole numbers only.
 - Timestamps display in the browser's local time.
 
@@ -166,9 +209,12 @@ Alerts, purchase orders, supplier tracking, dashboard, forecasting, RunPod GPU a
 One branch per feature, one commit per completed feature, merge to `main` by pull request.
 
 ```powershell
-git checkout -b feature/1-inventory
-git add .
+git checkout main
+git pull
+git checkout -b feature/2-low-stock-alerts
+# ...make changes, then commit in small pieces:
+git add <files>
 git status          # check: no .env, no node_modules, no .db files in the list
-git commit -m "feat(inventory): add inventory management with stock movements, RBAC and audit log (Feature 1)"
-git push -u origin feature/1-inventory
+git commit -m "feat(alerts): describe the change"
+git push -u origin feature/2-low-stock-alerts
 ```

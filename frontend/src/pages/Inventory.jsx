@@ -154,7 +154,8 @@ export default function Inventory() {
       toast.success(`That change was already recorded. ${item.name} stays at ${item.quantity} ${item.unit}.`);
     } else {
       const verb = movement.quantity_change > 0 ? "Added" : "Removed";
-      toast.success(`${verb} ${Math.abs(movement.quantity_change)} ${item.unit}. ${item.name} is now ${item.quantity} ${item.unit}.`);
+      const alertNote = item.stock_status === "in_stock" ? "" : " A low-stock alert is active (see Stock Alerts).";
+      toast.success(`${verb} ${Math.abs(movement.quantity_change)} ${item.unit}. ${item.name} is now ${item.quantity} ${item.unit}.${alertNote}`);
     }
     load();
   }

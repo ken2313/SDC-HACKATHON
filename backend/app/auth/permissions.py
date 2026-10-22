@@ -23,11 +23,13 @@ from app.models import User
 PERM_INVENTORY_VIEW = "inventory:view"
 PERM_INVENTORY_MANAGE = "inventory:manage"  # add / edit / archive products
 PERM_STOCK_RECORD = "stock:record"          # add or remove stock
+PERM_ALERTS_VIEW = "alerts:view"            # see low-stock alerts (Feature 2)
+# Changing a reorder threshold needs PERM_INVENTORY_MANAGE (owner only).
 
 # Feature 4 will extend this table (orders, approvals, logs, reports).
 ROLE_PERMISSIONS: dict[str, set[str]] = {
-    ROLE_OWNER: {PERM_INVENTORY_VIEW, PERM_INVENTORY_MANAGE, PERM_STOCK_RECORD},
-    ROLE_EMPLOYEE: {PERM_INVENTORY_VIEW, PERM_STOCK_RECORD},
+    ROLE_OWNER: {PERM_INVENTORY_VIEW, PERM_INVENTORY_MANAGE, PERM_STOCK_RECORD, PERM_ALERTS_VIEW},
+    ROLE_EMPLOYEE: {PERM_INVENTORY_VIEW, PERM_STOCK_RECORD, PERM_ALERTS_VIEW},
 }
 
 
