@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.constants import MOVEMENT_INITIAL, ROLE_EMPLOYEE, ROLE_OWNER
 from app.models import Business, InventoryItem, StockMovement, User
+from app.services.alert_service import reconcile_all
 
 # (sku, name, category, unit, quantity, reorder_threshold, supplier_name)
 CAFE_ITEMS = [
@@ -92,7 +93,8 @@ def seed_if_empty(db: Session) -> bool:
         employee=("Siti Aminah", "siti@pakdin.example"),
         items=SHOP_ITEMS,
     )
-    db.commit()
+    db.flush()
+    reconcile_all(db)  # opens alerts for the demo products that start out low (also commits)
     return True
 
 

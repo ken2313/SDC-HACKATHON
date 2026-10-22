@@ -13,17 +13,19 @@ from fastapi.middleware.cors import CORSMiddleware
 import app.models  # noqa: F401  (makes sure every table is registered)
 from app.database import Base, SessionLocal, engine
 from app.integrations import orbyte_mock
-from app.routers import inventory
+from app.routers import alerts, inventory
 from app.seed.seed_data import seed_if_empty
+from app.services.alert_service import reconcile_all
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(engine)  # creates tables that do not exist yet
-    if os.getenv("AUTO_SEED", "true").lower() == "true":
-        with SessionLocal() as db:
-            if seed_if_empty(db):
-                print("Seeded synthetic demo data.")
+    with SessionLocal() as db:
+        if os.getenv("AUTO_SEED", "true").lower() == "true" and seed_if_empty(db):
+            print("Seeded synthetic demo data.")
+        # Open alerts for products that are already low (safe to repeat)
+        reconcile_all(db)
     yield
 
 
@@ -50,6 +52,7 @@ app.add_middleware(
 
 app.include_router(orbyte_mock.router)
 app.include_router(inventory.router)
+app.include_router(alerts.router)
 
 
 @app.get("/api/health", tags=["System"])

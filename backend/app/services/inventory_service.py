@@ -19,6 +19,7 @@ from app.database import utcnow
 from app.models import InventoryItem, StockMovement, User
 from app.schemas.inventory import ItemCreate, ItemUpdate, MovementCreate
 from app.services.activity_service import log_activity
+from app.services.alert_service import sync_item_alert
 
 
 class InventoryError(Exception):
@@ -210,6 +211,7 @@ def create_item(db: Session, user: User, data: ItemCreate) -> InventoryItem:
             f"Created product {item.name} ({item.sku})",
             new_value=_snapshot(item),
         )
+        sync_item_alert(db, user, item, "create")  # opens an alert if it starts out low
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -247,6 +249,8 @@ def update_item(db: Session, user: User, item_id: int, data: ItemUpdate) -> Inve
         old_value={key: old_values[key] for key in changed_fields},
         new_value={key: new_values[key] for key in changed_fields},
     )
+    # A new threshold can open or close an alert straight away
+    sync_item_alert(db, user, item, "threshold" if "reorder_threshold" in changed_fields else "update")
     try:
         db.commit()
     except IntegrityError:
@@ -272,6 +276,8 @@ def set_archived(db: Session, user: User, item_id: int, archived: bool) -> Inven
         old_value={"is_archived": not archived},
         new_value={"is_archived": archived},
     )
+    # Archiving closes the item's alert. Restoring reopens one if it is still low.
+    sync_item_alert(db, user, item, "archive" if archived else "restore")
     db.commit()
     return item
 
@@ -354,6 +360,9 @@ def record_movement(
             old_value={"quantity": quantity_before},
             new_value={"quantity": quantity_after, "reason": data.reason},
         )
+        # Same transaction as the stock change: the alert opens or resolves
+        # together with the quantity, or not at all.
+        sync_item_alert(db, user, item, "stock")
         db.commit()
     except IntegrityError:
         # Two identical requests raced each other and the other one won.
