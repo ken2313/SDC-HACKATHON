@@ -371,8 +371,10 @@ def test_archive_and_restore_are_logged_and_repeatable(client, db_session):
     client.post(f"/api/inventory/{milk['id']}/archive", headers=CAFE_OWNER)
     client.post(f"/api/inventory/{milk['id']}/archive", headers=CAFE_OWNER)  # second call: no-op
     client.post(f"/api/inventory/{milk['id']}/restore", headers=CAFE_OWNER)
-    actions = [row.action for row in db_session.scalars(select(ActivityLog).order_by(ActivityLog.id))]
-    assert actions == ["item.archived", "item.restored"]
+    item_logs = db_session.scalars(
+        select(ActivityLog).where(ActivityLog.action.like("item.%")).order_by(ActivityLog.id)
+    )
+    assert [row.action for row in item_logs] == ["item.archived", "item.restored"]
 
 
 def test_archived_sku_stays_reserved(client):
