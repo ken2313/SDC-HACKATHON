@@ -1,0 +1,25 @@
+{
+  "model_version": "autoencoder-v1",
+  "seed": 42,
+  "threshold_method": "percentiles 95/99 of reconstruction error on held-out normal rows",
+  "unusual_threshold": 0.5263535380363464,
+  "highly_unusual_threshold": 1.0442878007888794,
+  "test_metrics": {
+    "autoencoder": {
+      "auc": 0.988,
+      "precision": 0.556,
+      "recall": 0.909,
+      "flagged": 18,
+      "false_alarms": 8,
+      "missed": 1
+    },
+    "zscore_baseline": {
+      "auc": 0.999,
+      "precision": 0.579,
+      "recall": 1.0,
+      "flagged": 19,
+      "false_alarms": 8,
+      "missed": 0
+    }
+  }
+}
