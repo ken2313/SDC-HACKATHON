@@ -1,4 +1,4 @@
-# Design decisions (Feature 1)
+# Design decisions
 
 Short notes on *why* things are built the way they are. Useful for the proposal and for judges' questions.
 
@@ -16,3 +16,17 @@ Short notes on *why* things are built the way they are. Useful for the proposal 
 | **Supplier is plain text for now** | Real supplier records arrive in Feature 6. The column will then be linked to the Suppliers table. |
 | **Vite proxy for `/api`** | One public URL on Replit, no CORS problems. |
 | **Plain JavaScript, no TypeScript, no UI library** | Fewer concepts for a student team; fewer dependencies. |
+
+## Feature 2: low-stock alerts
+
+| Decision | Why |
+|---|---|
+| **Alerts are created and closed by the backend, never by users** | Nobody can forget to raise one or close one early. The API has no create/edit/delete for alerts. |
+| **The alert check runs in the same transaction as the stock change** | The quantity, movement, alert and audit rows are saved together or not at all, so an alert can never disagree with the stock. |
+| **"At or below" the threshold** | Matches the brief ("falls below or reaches the minimum") and the Low Stock status from Feature 1. One rule, reused. |
+| **One open alert per product, enforced by a partial unique index** | Code checks first, and the database refuses a second open alert even if two requests race. Resolved alerts are exempt so history can pile up. |
+| **Resolved alerts are kept; a new episode makes a new alert** | Gives a history of how often a product ran low, useful for forecasting (Feature 8) and reports. |
+| **Urgency is calculated, not stored** | It follows the live quantity, so an open alert gets more urgent as stock drops, with no extra writes. Rule: 0 = critical, half of threshold or less = urgent, else low. |
+| **Thresholds are edited through the existing inventory PATCH (owner only)** | One place to change them, one permission, one audit entry. The alert then reacts automatically. |
+| **Start-up scan (`reconcile_all`)** | Products that were already low before alerts existed would otherwise never get an alert. It is idempotent, so running it on every start is safe. |
+| **System actions are logged with no user** | The scan has no person behind it. The log stores `user_id = NULL`, which the Activity Logs page (Feature 4) will show as "System". |
