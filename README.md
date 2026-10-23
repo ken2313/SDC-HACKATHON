@@ -17,7 +17,7 @@ We build **one feature at a time**.
 | 3 | Automatic purchase order generation | **Code complete. Team must run the checks below before relying on it** |
 | 4 | Human approval and activity logs (full RBAC + log page) | **Code complete. Team must run the checks below before relying on it** |
 | 5 | Supplier order tracking | **Code complete. Team must run the checks below before relying on it** |
-| 6 | Supplier management | Planned |
+| 6 | Supplier management | **Code complete. Team must run the checks below before relying on it** |
 | 7 | Inventory dashboard | Planned |
 | 8 | Demand forecasting | Planned |
 | 9 | AI anomaly detection on RunPod GPU | Planned |
@@ -49,6 +49,12 @@ We build **one feature at a time**.
 - [ ] `pytest -v` passes in `backend/` (includes the new `test_supplier_orders_api.py`)
 - [ ] `npm run build` succeeds in `frontend/`
 - [ ] Manual supplier order demo below works in the browser
+
+**Feature 6**
+- [ ] `pytest -v` passes in `backend/` (includes the new `test_suppliers_api.py`)
+- [ ] `npm run build` succeeds in `frontend/`
+- [ ] Manual supplier management demo below works in the browser
+- [ ] An existing `inventory.db` (not deleted) starts without errors and the backend prints "Database upgraded: added column suppliers.address" once
 
 ## Technology stack
 
@@ -329,20 +335,66 @@ Use a fresh database for the cleanest run (stop the backend, delete `backend/dat
 10. Short delivery: repeat steps 1 to 6 but receive only **3**. Stock becomes 8 (still low) and a new draft order is prepared.
 11. Overdue check (testing shortcut only): open `backend/data/inventory.db` in *DB Browser for SQLite* -> **Execute SQL** -> run `UPDATE purchase_orders SET estimated_delivery_date = '2020-01-01' WHERE status = 'ordered';` -> **Write Changes**. Refresh the page: the order shows **Overdue** in red and appears under the **Overdue** tab. Its status does not change by itself.
 
+## Feature 6: Supplier management
+
+**What it adds:** a **Suppliers** page where the owner keeps each supplier's contact details, usual delivery time and **price list** (which products it sells, at what price, minimum order). The price list is what Feature 3 uses to choose a supplier, so this page decides who new purchase orders go to. Each supplier also shows its **order history** and simple delivery statistics.
+
+| Rule | Detail |
+|---|---|
+| **Who** | **Owner and Employee:** view suppliers, contacts, prices, order history (`suppliers:view`). **Owner only:** add, edit, deactivate, change prices (`suppliers:manage`). Blocked attempts get 403 and an `access.denied` log entry. |
+| **Contact information** | Name (required, unique per business, not case-sensitive), contact person, phone, email, address, notes. Phone and email are checked for a sensible format. |
+| **Delivery time** | Typical days from placing an order to delivery (0 to 365). Used for the expected date when an order is placed (Feature 5). |
+| **Price list** | One entry per product per supplier: price in RM (at most 2 decimals, stored in sen) and a minimum order. Another business's product returns 404; archived products cannot be added. |
+| **Which supplier is chosen** | Unchanged from Feature 3: the cheapest **active** supplier with a price (tie: shorter delivery time). The price list shows **Chosen** next to the supplier that new drafts would use. |
+| **Price changes** | Apply to orders prepared from now on. An order that already exists keeps its own price, so the owner approves exactly what was shown. |
+| **Products without a supplier** | Listed at the top of the page (low ones first) because they cannot be reordered. The owner can pick a supplier and add a price right there. If the product is low, a **draft** order is prepared straight away (never approved). |
+| **Deactivate, never delete** | Order history must stay, so there is no delete. A deactivated supplier is never chosen for new orders. A supplier with unfinished orders (draft to delayed) cannot be deactivated. |
+| **Renaming** | Products whose supplier label showed the old name are updated to the new name in the same transaction. |
+| **Order history** | Every order with the supplier, its value, the value actually received, when it was placed and delivered, and how many days delivery took. A delivery is **late** when it took more days than the supplier's usual delivery time (Malaysia dates). |
+| **Audit log** | `supplier.created`, `supplier.updated`, `supplier.deactivated`, `supplier.activated`, `supplier.product_added`, `supplier.price_changed`, `supplier.product_removed`. New "Suppliers" type in the Activity Logs filter. |
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| GET | `/api/suppliers?include_inactive=&search=` | Owner, Employee | List suppliers with product and order counts |
+| GET | `/api/suppliers/summary` | Owner, Employee | Counts for the page header |
+| GET | `/api/suppliers/products-without-supplier` | Owner, Employee | Active products no active supplier sells |
+| POST | `/api/suppliers` | **Owner only** | Add supplier |
+| GET | `/api/suppliers/{id}` | Owner, Employee | Contact details, price list, order history, statistics |
+| PATCH | `/api/suppliers/{id}` | **Owner only** | Edit details (send only what changes; null clears an optional field) |
+| POST | `/api/suppliers/{id}/deactivate`, `/activate` | **Owner only** | Stop / restart using the supplier for new orders |
+| POST | `/api/suppliers/{id}/products` | **Owner only** | Add a product with price and minimum order |
+| PATCH | `/api/suppliers/{id}/products/{entry_id}` | **Owner only** | Change price and/or minimum order |
+| DELETE | `/api/suppliers/{id}/products/{entry_id}` | **Owner only** | Take a product off the price list |
+
+**Database:** no new table. The `suppliers` table gets three optional columns (`address`, `notes`, `updated_at`). An existing database is upgraded automatically at start-up by `backend/app/schema_upgrade.py`, which only **adds** missing columns, so you do **not** need to delete `inventory.db`. Demo suppliers get synthetic addresses only in a new database.
+
+### Manual demo (suppliers and prices)
+
+1. **Hafiz Ismail (employee)** -> **Suppliers**. He sees 5 café suppliers, their contacts and prices (click **View**), but no Add, Edit, Price or Deactivate buttons. In http://127.0.0.1:8000/docs, `POST /api/suppliers` with `X-User-Id: 2` returns **403**.
+2. Switch to **Aisyah Rahman (owner)** -> Suppliers -> **Manage** on *Segar Dairy*. The price list shows Fresh Milk at RM 7.80 marked **Chosen** (Pasar Borong sells it too, at RM 8.50).
+3. Open *Pasar Borong Jaya* -> **Price** on Fresh Milk -> change it to **7.00** -> save. Pasar Borong is now **Chosen** for milk.
+4. As Hafiz, in Inventory remove 15 Fresh Milk. Purchase Orders shows the new draft from **Pasar Borong** at RM 7.00 (15 x RM 7.00 = RM 105.00).
+5. As Aisyah, open Segar Dairy -> **Deactivate** while it has no unfinished orders: it disappears from the list (tick **Show inactive suppliers** to see it). Re-activate it.
+6. Try to deactivate Pasar Borong while the milk draft is open: refused, with the order number.
+7. In Inventory, **Add product** "Frozen Yoghurt 1L", 2 tubs, reorder at 5. Back on Suppliers it appears under **"1 product has no supplier price"**. Choose *Roti Segar Bakery Supply*, **Add price** 12.50, minimum 4. The message says a draft was prepared; Purchase Orders shows it (8 tubs).
+8. **Add supplier**: try a bad email to see the check, then save a real one and add a product to its price list.
+9. After a delivery from Feature 5, open the supplier's **Order history**: value received, days to deliver, and **late** if it took longer than usual.
+10. **Activity Logs** -> Type **Suppliers**: every change above, with before/after values.
+
 ## Orbyte integration assumptions
 
 We have no access to Orbyte's real APIs. The mock layer (`backend/app/integrations/orbyte_mock.py`) assumes a host platform would tell our module: which business is calling, which user, and their role. We turn the role into permissions and write completed actions to the audit log. In a real integration the `X-User-Id` header would be replaced by Orbyte's verified token.
 
-## Known limitations (Features 1 to 5)
+## Known limitations (Features 1 to 6)
 
 - The simulated session has no passwords. It demonstrates role rules, not real security.
-- The supplier on a product is plain text until Feature 6.
+- The supplier shown on a product in Inventory is still a text label. What really links a product to a supplier is the supplier's price list. Adding a price fills an empty label; renaming a supplier updates matching labels.
 - The product list is not paginated (fine for SME-sized catalogues).
 - Only the Owner can read the Activity Logs. Employees cannot see even their own entries.
 - Log date filters use **UTC days** (the log stores UTC). A late-night entry in Malaysia (UTC+8) can fall on the previous UTC day.
 - The log is protected by the application only. Anyone with direct access to the SQLite file can change it. A production system would use a tamper-evident store.
 - "Permitted inventory records" for employees means all non-sensitive product fields. There is no per-product or per-location restriction.
-- Permissions for supplier screens and reports are defined now but enforced when Features 6 and 7 add those screens.
+- The `reports:view` permission is defined but enforced when Feature 7 adds the dashboard.
 - There is no Submit for approval button: a draft is shown to the owner as "awaiting approval". The `pending_approval` status exists but is not used yet.
 - Supplier actions are simulated: nothing is sent to a supplier, and shipping/delay updates are typed in by staff.
 - A delivery is confirmed in one step. There are no partial deliveries over several days: a short delivery closes the order and, if stock is still low, a new draft is prepared.
@@ -355,7 +407,10 @@ We have no access to Orbyte's real APIs. The mock layer (`backend/app/integratio
 - Order quantity uses a fixed rule (refill to 2 x the reorder level). Forecast-based quantities arrive with Feature 8.
 - Approving an order does not contact a supplier. Placing, shipping and delivery are Feature 5 (simulated).
 - Archiving a product does not cancel an open order for it. Approval is blocked until the line is removed.
-- Supplier prices can only be changed in the database until Feature 6 adds the Suppliers screens.
+- Changing a supplier price does not update orders that already exist (by design). To use the new price on a draft, reject it and prepare a new one, or switch its supplier.
+- A supplier can be deactivated only when it has no unfinished orders. A draft created in the same instant as the deactivation is not blocked (very unlikely for a small business).
+- Delivery statistics use the supplier's current usual delivery time. If you change it, older deliveries are judged against the new number.
+- Prices are per unit and in RM only. There are no volume discounts, delivery fees or price history (the audit log keeps old prices).
 - Timestamps display in the browser's local time.
 
 ## Future improvements

@@ -10,7 +10,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.database import utcnow
-from app.models import ActivityLog, InventoryItem, PurchaseOrder, StockAlert, User
+from app.models import ActivityLog, InventoryItem, PurchaseOrder, StockAlert, Supplier, User
 
 # action code -> readable label. Unknown codes fall back to the code itself.
 ACTION_LABELS = {
@@ -32,6 +32,13 @@ ACTION_LABELS = {
     "po.delayed": "Order marked delayed",
     "po.delivered": "Delivery confirmed",
     "po.cancelled": "Order cancelled",
+    "supplier.created": "Supplier added",
+    "supplier.updated": "Supplier edited",
+    "supplier.deactivated": "Supplier deactivated",
+    "supplier.activated": "Supplier re-activated",
+    "supplier.product_added": "Product added to price list",
+    "supplier.price_changed": "Supplier price changed",
+    "supplier.product_removed": "Product removed from price list",
     "access.denied": "Action blocked (no permission)",
 }
 
@@ -41,6 +48,7 @@ CATEGORIES = {
     "stock": ("Stock movements", "stock."),
     "alert": ("Stock alerts", "alert."),
     "purchase_order": ("Purchase orders", "po."),
+    "supplier": ("Suppliers", "supplier."),
     "access": ("Blocked attempts", "access."),
 }
 
@@ -89,8 +97,8 @@ def _changes(old: dict | None, new: dict | None) -> list[dict]:
 
 
 def _entity_labels(db: Session, business_id: int, logs: list[ActivityLog]) -> dict[tuple[str, int], str]:
-    """Look up a readable name (product name, PO number) for each affected record, in 3 queries."""
-    ids: dict[str, set[int]] = {"inventory_item": set(), "purchase_order": set(), "stock_alert": set()}
+    """Look up a readable name (product, PO number, supplier) for each affected record, one query per type."""
+    ids: dict[str, set[int]] = {"inventory_item": set(), "purchase_order": set(), "stock_alert": set(), "supplier": set()}
     for log in logs:
         if log.entity_id is not None and log.entity_type in ids:
             ids[log.entity_type].add(log.entity_id)
@@ -117,6 +125,13 @@ def _entity_labels(db: Session, business_id: int, logs: list[ActivityLog]) -> di
             .where(StockAlert.business_id == business_id, StockAlert.id.in_(ids["stock_alert"]))
         ):
             labels[("stock_alert", alert_id)] = name
+    if ids["supplier"]:
+        for supplier_id, name in db.execute(
+            select(Supplier.id, Supplier.name).where(
+                Supplier.business_id == business_id, Supplier.id.in_(ids["supplier"])
+            )
+        ):
+            labels[("supplier", supplier_id)] = name
     return labels
 
 

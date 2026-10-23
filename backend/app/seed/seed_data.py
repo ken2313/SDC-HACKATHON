@@ -98,6 +98,17 @@ SHOP_SUPPLIERS = {
     "Ladang Telur Sejahtera (demo)": ("Hajah Normah", "+60 9-555 0202", "telur@sejahtera.example", 1,
                                       {"EGG-A30": (1750, 4)}),
 }
+# Feature 6: made-up addresses for the demo suppliers (street names and numbers are invented)
+SUPPLIER_ADDRESSES = {
+    "Segar Dairy Sdn Bhd (demo)": "Lot 12, Jalan Industri 3, Shah Alam, Selangor",
+    "Kopi Borneo Trading (demo)": "No. 8, Jalan Padungan, Kuching, Sarawak",
+    "Pasar Borong Jaya (demo)": "Gerai 21, Pasar Borong Jaya, Petaling Jaya, Selangor",
+    "PakEco Packaging (demo)": "No. 5, Jalan Perindustrian 2, Johor Bahru, Johor",
+    "Roti Segar Bakery Supply (demo)": "No. 17, Jalan Bakeri, Klang, Selangor",
+    "Pak Mat Wholesale (demo)": "No. 3, Jalan Pasar, Kota Bharu, Kelantan",
+    "Ladang Telur Sejahtera (demo)": "Ladang 9, Kampung Sejahtera, Pasir Mas, Kelantan",
+}
+
 SUPPLIERS_BY_BUSINESS = {
     "Kopi Kita Café (demo)": CAFE_SUPPLIERS,
     "Kedai Runcit Pak Din (demo)": SHOP_SUPPLIERS,
@@ -122,7 +133,7 @@ def seed_suppliers_if_missing(db: Session) -> bool:
         for name, (contact, phone, email, lead_days, products) in catalogue.items():
             supplier = Supplier(
                 business_id=business.id, name=name, contact_name=contact, phone=phone,
-                email=email, typical_lead_time_days=lead_days,
+                email=email, typical_lead_time_days=lead_days, address=SUPPLIER_ADDRESSES.get(name),
             )
             db.add(supplier)
             db.flush()

@@ -13,7 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import app.models  # noqa: F401  (makes sure every table is registered)
 from app.database import Base, SessionLocal, engine
 from app.integrations import orbyte_mock
-from app.routers import access, activity_logs, alerts, inventory, purchase_orders, supplier_orders
+from app.routers import access, activity_logs, alerts, inventory, purchase_orders, supplier_orders, suppliers
+from app.schema_upgrade import upgrade_schema
 from app.seed.seed_data import seed_if_empty, seed_suppliers_if_missing
 from app.services.alert_service import reconcile_all
 from app.services.order_tracking_service import backfill_history
@@ -22,6 +23,9 @@ from app.services.order_tracking_service import backfill_history
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(engine)  # creates tables that do not exist yet
+    # Feature 6: add new optional columns to tables from older databases (safe to repeat)
+    for column in upgrade_schema(engine):
+        print(f"Database upgraded: added column {column}.")
     with SessionLocal() as db:
         if os.getenv("AUTO_SEED", "true").lower() == "true" and seed_if_empty(db):
             print("Seeded synthetic demo data.")
@@ -61,6 +65,7 @@ app.include_router(inventory.router)
 app.include_router(alerts.router)
 app.include_router(purchase_orders.router)
 app.include_router(supplier_orders.router)
+app.include_router(suppliers.router)
 app.include_router(activity_logs.router)
 app.include_router(access.router)
 

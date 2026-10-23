@@ -83,3 +83,20 @@ Short notes on *why* things are built the way they are. Useful for the proposal 
 | **New table `order_status_history`, no changes to existing tables** | `create_all` adds new tables safely. The existing `estimated_delivery_date`, `received_quantity` and `inventory_applied` columns (added in Feature 3 for this purpose) are reused. |
 | **Start-up backfill of history** | Orders created before this feature still get a timeline. It skips orders that already have history, so repeating it is harmless. |
 | **History helper in its own file** | The purchase order service and the tracking service both write history; a shared file avoids them importing each other. |
+
+## Feature 6: supplier management
+
+| Decision | Why |
+|---|---|
+| **The price list is the link between suppliers and products** | Feature 3 already chooses suppliers from `supplier_products`. Managing that table directly means the Suppliers page and the purchase order logic can never disagree. The product's supplier text label is kept for display and filled in automatically where it was empty. |
+| **"Chosen" uses the same function as the drafts (`_best_offer`)** | The page shows exactly which supplier the next draft will use, instead of a second copy of the rule that could drift. |
+| **Price changes do not touch existing orders** | An order line keeps the price it was prepared with. The owner approves the amount on screen, and the history stays truthful. |
+| **Deactivate instead of delete** | Orders, history and the audit log point to the supplier. Deleting it would break that trail. |
+| **No deactivation while orders are unfinished** | Otherwise an approved or shipped order would belong to a supplier the system says it no longer uses. The owner finishes, rejects or cancels first (or switches the draft's supplier). |
+| **Adding a price can prepare a draft right away** | A low product with no supplier was a dead end in Feature 3 ("No supplier price on file"). Adding the price is the moment it becomes orderable. It reuses the same best-effort `auto_draft_for_item` as a stock change, so it only ever creates a DRAFT, respects `AUTO_GENERATE_PO`, and cannot break the price save. |
+| **A tiny additive schema upgrade instead of a migration tool** | Three optional columns were needed. `schema_upgrade.py` only adds missing nullable columns and checks first, so team members and Replit keep their data. Adding Alembic would be heavier than the problem. |
+| **Supplier names unique per business, not case-sensitive** | "Segar Dairy" and "SEGAR DAIRY" would be the same supplier to a person. Checked in code; the existing database rule catches exact duplicates in a race. |
+| **Email and phone checked with simple patterns** | Catches typing mistakes without adding a validation package. The check is the same in the form and in the backend. |
+| **Late = more days than the usual delivery time, using Malaysia dates** | Simple and explainable. It uses the timeline from Feature 5 (placed and delivered times), so nothing new has to be recorded. |
+| **Employees can see prices and contacts** | They prepare purchase order requests and receive deliveries, so they need the contact and the price. Changing them is owner-only. |
+

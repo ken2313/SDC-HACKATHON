@@ -46,7 +46,8 @@ class InventoryItem(Base):
     unit: Mapped[str] = mapped_column(String(20), default="pcs")
     quantity: Mapped[int] = mapped_column(Integer, default=0)
     reorder_threshold: Mapped[int] = mapped_column(Integer, default=0)
-    # Plain text for now. Feature 6 (Supplier Management) adds a real suppliers table.
+    # A display label. The real product-supplier link is the supplier's price list
+    # (supplier_products, managed on the Suppliers page since Feature 6).
     supplier_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

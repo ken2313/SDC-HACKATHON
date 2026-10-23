@@ -10,6 +10,7 @@ import Inventory from "./pages/Inventory.jsx";
 import PurchaseOrders from "./pages/PurchaseOrders.jsx";
 import StockAlerts from "./pages/StockAlerts.jsx";
 import SupplierOrders from "./pages/SupplierOrders.jsx";
+import Suppliers from "./pages/Suppliers.jsx";
 
 function AppRoutes() {
   const { status, error, retry, user } = useSession();
@@ -44,6 +45,7 @@ function AppRoutes() {
         <Route path="stock-alerts" element={<StockAlerts key={user.id} />} />
         <Route path="purchase-orders" element={<PurchaseOrders key={user.id} />} />
         <Route path="supplier-orders" element={<SupplierOrders key={user.id} />} />
+        <Route path="suppliers" element={<Suppliers key={user.id} />} />
         <Route path="activity-logs" element={<ActivityLogs key={user.id} />} />
         {NAV_ITEMS.filter((item) => !item.live).map((item) => (
           <Route
