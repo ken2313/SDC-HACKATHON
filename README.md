@@ -19,7 +19,7 @@ We build **one feature at a time**.
 | 5 | Supplier order tracking | **Code complete. Team must run the checks below before relying on it** |
 | 6 | Supplier management | **Code complete. Team must run the checks below before relying on it** |
 | 7 | Inventory dashboard | **Code complete. Team must run the checks below before relying on it** |
-| 8 | Demand forecasting | Planned |
+| 8 | Demand forecasting | **Code complete. Team must run the checks below before relying on it** |
 | 9 | AI anomaly detection on RunPod GPU | Planned |
 | 10 | Simulated Orbyte integration | Started (session/role mock); grows with each feature |
 
@@ -61,6 +61,11 @@ We build **one feature at a time**.
 - [ ] `pytest -v` passes in `backend/` (includes the new `test_dashboard_api.py`)
 - [ ] `npm run build` succeeds in `frontend/`
 - [ ] Manual dashboard demo below works in the browser
+
+**Feature 8**
+- [ ] `pytest -v` passes in `backend/` (includes the new `test_forecasting_api.py`)
+- [ ] `npm run build` succeeds in `frontend/`
+- [ ] Manual forecasting demo below works in the browser
 
 ## Technology stack
 
@@ -421,11 +426,49 @@ Use a fresh database for the cleanest run (stop the backend, delete `backend/dat
 6. As Aisyah approve and place the order (Features 3 and 5). It appears under **Upcoming deliveries**. Mark it delayed: **Delayed orders** becomes 1.
 7. Confirm the delivery: it leaves Upcoming deliveries, **Received (30 days)** goes up, milk is back to 20.
 
+## Feature 8: Demand forecasting
+
+**What it adds:** a **Demand Forecasting** page that says, for every product, how much is used per day, when it will run out, **when to order** (allowing for the supplier's delivery time) and **how much**. It also checks its own accuracy against what really happened. It is advice: nothing is ordered or changed automatically.
+
+**The method (a 7-day moving average, as the brief suggests):**
+
+| Step | Rule |
+|---|---|
+| Demand history | Units used per day (every stock removal), per Malaysian calendar day. A day with no use counts as 0. Today is left out (not finished). |
+| Forecast | Average daily use over the last **7 complete days**. The same number for every future day. |
+| Runs out | Stock on hand ÷ daily demand. |
+| Order by | The day stock falls to the demand during the supplier's **delivery time + 2 safety days**. If that day has passed: "Order now". |
+| Order quantity | Demand for delivery time + **7 days** + 2 safety days, minus stock on hand and stock already on order, never below the supplier's minimum. The Feature 3 rule (refill to 2 x reorder level) is shown next to it for comparison. |
+| Suggested reorder level | Demand during delivery time + 2 safety days. If the current level is lower, the page warns that stock can run out before a delivery arrives, and the owner can apply the suggestion (existing owner-only route). |
+| Predicted vs actual | For each of the last **14 days**, forecast from the 7 days before it and compare with real use. **Accuracy = 100% − total error ÷ total use** (at least 0%). Below 50% the dates are marked uncertain. |
+| Not enough data | Under **7 days** of records: no forecast, with a warning. Under **14 days**: a forecast with a "limited history" warning. |
+
+**Statuses:** Order now · Order this week · On order (it should be ordered and an approved order is on its way) · OK · No recent use · Not enough data. Drafts waiting for approval do not count as "on order".
+
+**Worked example (milk, demo data):** about 10 cartons a day, 20 on hand, Segar Dairy delivers in 1 day. Runs out in about 2 days. Order by = 2 − 1 − 2 → already passed → **Order now**. Suggested reorder level about 10 × (1 + 2) = **30**, so the current level of 10 is too low: by the time the low-stock alert fires, there is only one day of milk left.
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| GET | `/api/forecasts` | Owner, Employee | Every active product, most urgent first, with a summary and the method settings |
+| GET | `/api/forecasts/{item_id}?horizon_days=7..60` | Owner, Employee | One product: last 28 days (actual vs predicted) and the next days (forecast, projected stock) |
+
+No new table and no new write endpoint: forecasts are calculated from `stock_movements` when the page is opened.
+
+### Manual demo (forecasting)
+
+1. Use the database with the synthetic history from Feature 7 (delete `backend/data/inventory.db` and restart if you have not done that yet).
+2. **Demand Forecasting** as **Hafiz (employee)**. "Needs action" lists Fresh Milk as **Order now**, with about 10 cartons a day and a suggested reorder level around 30. Open **How the forecast works**.
+3. Click **Details** on Fresh Milk: the **Predicted vs actual** chart (bars = real use, line = what was predicted), the projected stock falling to zero in about 2 days, and "How these numbers were worked out" with the real sums. Switch 7d / 14d / 30d. Hafiz has no button to change the reorder level.
+4. Switch to **Aisyah (owner)** -> Details on Fresh Milk -> **Review new level** -> save the suggested level. Back in the list the warning is gone. Stock Alerts now shows milk as low (20 is below the new level) and a draft order was prepared.
+5. **All products**: compare accuracy across products. Products with very uneven use have lower accuracy and an "uncertain" warning.
+6. In Inventory add a new product. On the forecasting page it shows **Not enough data** with the warning.
+7. Remove 15 milk, approve the draft in Purchase Orders: milk changes to **On order**.
+
 ## Orbyte integration assumptions
 
 We have no access to Orbyte's real APIs. The mock layer (`backend/app/integrations/orbyte_mock.py`) assumes a host platform would tell our module: which business is calling, which user, and their role. We turn the role into permissions and write completed actions to the audit log. In a real integration the `X-User-Id` header would be replaced by Orbyte's verified token.
 
-## Known limitations (Features 1 to 7)
+## Known limitations (Features 1 to 8)
 
 - The simulated session has no passwords. It demonstrates role rules, not real security.
 - The supplier shown on a product in Inventory is still a text label. What really links a product to a supplier is the supplier's price list. Adding a price fills an empty label; renaming a supplier updates matching labels.
@@ -439,6 +482,10 @@ We have no access to Orbyte's real APIs. The mock layer (`backend/app/integratio
 - The trend mixes nothing across products: it shows one product at a time, because units (cartons, bags, packs) cannot be added together.
 - The synthetic history writes stock movements only (no activity-log rows), because it is demo data rather than actions people took.
 - The AI anomaly card is a placeholder until Feature 9.
+- The forecast is a 7-day moving average: it does not model trends, weekdays, holidays or promotions, and reacts to a change in demand only after a few days.
+- Every stock removal counts as demand, including corrections and waste. A mistaken large removal raises the forecast for a week (Feature 9 will flag such entries).
+- Purchase order drafts still use the fixed Feature 3 quantity rule. The forecast quantity is shown as advice; using it automatically is a possible next step.
+- The forecast assumes the supplier delivers in its usual time and that no other deliveries arrive.
 - There is no Submit for approval button: a draft is shown to the owner as "awaiting approval". The `pending_approval` status exists but is not used yet.
 - Supplier actions are simulated: nothing is sent to a supplier, and shipping/delay updates are typed in by staff.
 - A delivery is confirmed in one step. There are no partial deliveries over several days: a short delivery closes the order and, if stock is still low, a new draft is prepared.

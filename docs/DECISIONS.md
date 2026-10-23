@@ -114,3 +114,17 @@ Short notes on *why* things are built the way they are. Useful for the proposal 
 | **Recharts** | It is the charting library named in the brief, works with React, and needs no backend changes. |
 | **AI anomaly card is a labelled placeholder** | The brief wants anomaly alerts on the dashboard "when Feature 9 is implemented". Showing fake alerts would misrepresent the system. |
 
+## Feature 8: demand forecasting
+
+| Decision | Why |
+|---|---|
+| **7-day simple moving average** | The brief asks to start simple. It is easy to explain to an SME owner and to check by hand, and seven days contain every weekday once, so weekend peaks are averaged in rather than chased. |
+| **Accuracy is measured, not claimed** | A backtest over the last 14 days compares the prediction for each morning with what was really used. The accuracy figure (100% − WAPE) is shown for every product and low values come with a warning, so nobody trusts a shaky forecast blindly. |
+| **WAPE instead of a percentage error per day** | Days with zero use make per-day percentages divide by zero. Total error ÷ total use is stable and easy to read. |
+| **Order-by date uses the supplier's real delivery time** | The same supplier the drafts would use (cheapest active). A run-out date alone is not enough if the supplier needs four days. |
+| **Safety buffer of 2 days, order covers 7 days** | Simple, documented constants at the top of `forecast_service.py`. A small business can tune them in one place. |
+| **Suggest a reorder level, do not change it** | The forecast often shows the reorder level is too low (milk). The owner decides; applying it reuses the existing owner-only inventory route, so permissions and audit logging already work. |
+| **Drafts do not count as "on order"** | Nothing is ordered until the owner approves. Counting drafts would hide a real shortage. |
+| **Calculated on request, no forecast table** | Small catalogues make this fast, and results can never go stale. A `DemandForecasts` table can be added if forecasts need to be stored for history. |
+| **Not enough data = no number** | Below 7 days the method has no full window. Showing nothing plus a clear warning is more honest than a guess. |
+
