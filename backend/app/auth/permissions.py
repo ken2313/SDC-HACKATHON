@@ -34,6 +34,7 @@ PERM_REPORTS_VIEW = "reports:view"          # money totals on the dashboard: OWN
 PERM_SUPPLIERS_VIEW = "suppliers:view"      # see suppliers, contacts, price lists, order history (Feature 6)
 PERM_SUPPLIERS_MANAGE = "suppliers:manage"  # add / edit / deactivate suppliers, set prices: OWNER ONLY (Feature 6)
 PERM_ORDERS_TRACK = "orders:track"          # update shipping / delay, confirm deliveries (Feature 5)
+PERM_SETTINGS_MANAGE = "settings:manage"    # change business settings: OWNER ONLY (Settings page)
 PERM_ORDERS_PLACE = "orders:place"          # place an approved order with the supplier, cancel: OWNER ONLY (Feature 5)
 
 # One table drives everything: the permission checks, the /api/access/matrix endpoint
@@ -53,6 +54,7 @@ PERMISSION_INFO: list[tuple[str, str, str]] = [
     (PERM_SUPPLIERS_MANAGE, "Suppliers", "Add, edit and deactivate suppliers, set product prices"),
     (PERM_REPORTS_VIEW, "Reports", "See money totals on the dashboard (stock value, orders, spending)"),
     (PERM_LOGS_VIEW, "Audit", "View the Activity Logs"),
+    (PERM_SETTINGS_MANAGE, "Settings", "Change business settings (name, automatic order drafts)"),
 ]
 
 ROLE_PERMISSIONS: dict[str, set[str]] = {

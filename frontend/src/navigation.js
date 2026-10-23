@@ -13,6 +13,5 @@ export const NAV_ITEMS = [
     description: "A small PyTorch model running on a RunPod GPU flags unusual stock movements for human review." },
   { label: "Activity Logs", path: "/activity-logs", live: true, feature: 4,
     permission: "logs:view" }, // owner only: the sidebar hides it for employees, the backend enforces it
-  { label: "Settings", path: "/settings", live: false, feature: null,
-    description: "Business and notification settings. Planned for after the core features." },
+  { label: "Settings", path: "/settings", live: true, feature: null },
 ];

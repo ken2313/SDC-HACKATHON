@@ -25,7 +25,7 @@ LogViewer = Annotated[User, Depends(require_permission(PERM_LOGS_VIEW))]
 def list_activity_logs(
     db: DbSession,
     user: LogViewer,
-    category: Literal["inventory", "stock", "alert", "purchase_order", "supplier", "access"] | None = None,
+    category: Literal["inventory", "stock", "alert", "purchase_order", "supplier", "settings", "access"] | None = None,
     action: str | None = Query(default=None, max_length=60),
     approval: Literal["approved", "rejected", "denied", "decisions"] | None = None,
     user_id: int | None = None,

@@ -1,7 +1,8 @@
 """Tiny, safe database upgrade for columns added after a table already existed.
 
 `Base.metadata.create_all()` creates NEW tables, but it never adds new columns to a table
-that is already in your database. Feature 6 adds three optional columns to `suppliers`.
+that is already in your database. Feature 6 added three optional columns to `suppliers`,
+and the Settings page adds one to `businesses`.
 This function adds them to an older database (your local inventory.db or the Replit one)
 so nobody has to delete their data.
 
@@ -19,6 +20,10 @@ ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("address", "VARCHAR(255)"),
         ("notes", "VARCHAR(500)"),
         ("updated_at", "DATETIME"),
+    ],
+    # Settings page
+    "businesses": [
+        ("auto_draft_orders", "BOOLEAN"),
     ],
 }
 

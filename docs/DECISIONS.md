@@ -128,3 +128,17 @@ Short notes on *why* things are built the way they are. Useful for the proposal 
 | **Calculated on request, no forecast table** | Small catalogues make this fast, and results can never go stale. A `DemandForecasts` table can be added if forecasts need to be stored for history. |
 | **Not enough data = no number** | Below 7 days the method has no full window. Showing nothing plus a clear warning is more honest than a guess. |
 
+## Sign-in page and Settings
+
+| Decision | Why |
+|---|---|
+| **The backend checks the password, not the website** | Anything in the website's JavaScript can be read by anyone who opens it. The backend stores only a salted PBKDF2 hash. |
+| **Standard library only (hashlib, hmac, secrets)** | No new packages to install on Windows or Replit, and the code is short enough to read in one sitting. |
+| **Signed tokens instead of a sessions table** | No new table or clean-up job. A revoked list in memory makes log-out immediate; the trade-off (forgotten on restart) is documented. |
+| **The sign-in check runs before the role check** | It is attached to every router in `main.py`, so an anonymous caller is stopped with 401 before any permission code runs (and before an "access denied" log entry could be written). |
+| **One demo account plus the existing user switcher** | Keeps every earlier demo (owner vs employee) working unchanged, while the module is no longer open to anyone who finds the URL. |
+| **Brute-force limit (5 wrong tries per 5 minutes)** | Cheap protection against guessing; tested. |
+| **Business settings in the database, preferences in the browser** | Business settings affect everyone and need the owner's permission and an audit trail. A start page is personal and harmless, so localStorage is enough. |
+| **Automatic drafts as a per-business switch** | Some owners prefer to prepare orders themselves. The alert still opens and the manual button still works, so nothing is lost. |
+| **Tests switch the sign-in check off by default** | The earlier tests focus on business rules. One test file switches it on and tests signing in, forged and expired tokens, log-out, the attempt limit and the 401-before-403 order. |
+

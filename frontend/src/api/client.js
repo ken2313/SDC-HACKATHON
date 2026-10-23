@@ -5,6 +5,29 @@
 // No API keys live in the frontend. Secrets stay in the backend.
 
 const USER_KEY = "orbyte_demo_user_id";
+const TOKEN_KEY = "orbyte_session_token";
+
+// Sign-in token from POST /api/auth/login. Kept in this browser only.
+export function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setToken(token) {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage can be blocked; the user then signs in again after a reload */
+  }
+}
+
+// Fired when the backend says the session is missing or has ended (401 + "WWW-Authenticate: Bearer").
+// AuthContext listens and shows the sign-in page.
+export const SESSION_ENDED_EVENT = "orbyte:session-ended";
 
 export function getStoredUserId() {
   try {
@@ -61,6 +84,8 @@ export async function request(path, { method = "GET", body, params } = {}) {
   const headers = { "Content-Type": "application/json" };
   const userId = getStoredUserId();
   if (userId) headers["X-User-Id"] = userId;
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   let response;
   try {
@@ -75,6 +100,9 @@ export async function request(path, { method = "GET", body, params } = {}) {
 
   if (response.status === 204) return null;
   const data = await response.json().catch(() => null);
+  if (response.status === 401 && response.headers.get("WWW-Authenticate") === "Bearer" && !path.startsWith("/auth/login")) {
+    window.dispatchEvent(new Event(SESSION_ENDED_EVENT));
+  }
   if (!response.ok) throw new ApiError(extractMessage(data, response.status), response.status);
   return data;
 }

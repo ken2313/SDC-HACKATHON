@@ -17,6 +17,9 @@ from pathlib import Path
 _TEST_DB_FILE = Path(tempfile.mkdtemp(prefix="inventory_tests_")) / "test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_FILE.as_posix()}"
 os.environ["AUTO_SEED"] = "false"
+# The sign-in check is switched off for most tests (they focus on the business rules).
+# test_auth_settings_api.py switches it back on to test signing in.
+os.environ["REQUIRE_LOGIN"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

@@ -39,6 +39,7 @@ ACTION_LABELS = {
     "supplier.product_added": "Product added to price list",
     "supplier.price_changed": "Supplier price changed",
     "supplier.product_removed": "Product removed from price list",
+    "business.updated": "Business settings changed",
     "access.denied": "Action blocked (no permission)",
 }
 
@@ -49,6 +50,7 @@ CATEGORIES = {
     "alert": ("Stock alerts", "alert."),
     "purchase_order": ("Purchase orders", "po."),
     "supplier": ("Suppliers", "supplier."),
+    "settings": ("Settings", "business."),
     "access": ("Blocked attempts", "access."),
 }
 
