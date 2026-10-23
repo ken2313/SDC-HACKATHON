@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { inventoryApi } from "../api/inventory.js";
+import { suppliersApi } from "../api/suppliers.js";
 import { isWholeNumber } from "../utils/stock.js";
 import FormField, { inputClass } from "./FormField.jsx";
 import Modal from "./Modal.jsx";
@@ -33,6 +34,23 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [supplierNames, setSupplierNames] = useState([]);
+
+  // Feature 6: suggest the business's active suppliers (typing another name is still allowed)
+  useEffect(() => {
+    let cancelled = false;
+    suppliersApi
+      .list()
+      .then((rows) => {
+        if (!cancelled) setSupplierNames(rows.map((row) => row.name));
+      })
+      .catch(() => {
+        /* suggestions are optional: the field still works without them */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -135,15 +153,25 @@ export default function ProductFormModal({ product, categories, onClose, onSaved
               placeholder="cartons, packs, bags…"
             />
           </FormField>
-          <FormField label="Supplier (optional)" htmlFor="pf-supplier" hint="Linked to real supplier records in a later feature.">
+          <FormField
+            label="Supplier (optional)"
+            htmlFor="pf-supplier"
+            hint="A label shown in Inventory. Prices for ordering are set on the Suppliers page."
+          >
             <input
               id="pf-supplier"
+              list="pf-supplier-options"
               className={inputClass(false)}
               value={values.supplier_name}
               maxLength={120}
               onChange={(e) => setField("supplier_name", e.target.value)}
               placeholder="e.g. Segar Dairy Sdn Bhd (demo)"
             />
+            <datalist id="pf-supplier-options">
+              {supplierNames.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
           </FormField>
         </div>
 

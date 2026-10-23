@@ -7,8 +7,11 @@ from app.database import Base, utcnow
 
 
 class Supplier(Base):
-    """Minimal supplier record. Feature 3 needs it to pick a supplier and a price.
-    Feature 6 adds the management screens (add / edit / order history)."""
+    """A supplier of one business. Feature 3 uses it to pick a supplier and a price;
+    Feature 6 adds the management screens (add / edit / price list / order history).
+
+    `address`, `notes` and `updated_at` were added in Feature 6. Databases created earlier
+    get these columns automatically at start-up (see app/schema_upgrade.py)."""
 
     __tablename__ = "suppliers"
     __table_args__ = (UniqueConstraint("business_id", "name", name="uq_supplier_business_name"),)
@@ -19,9 +22,13 @@ class Supplier(Base):
     contact_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
     email: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     typical_lead_time_days: Mapped[int] = mapped_column(Integer, default=3)
+    # Inactive suppliers are kept (their order history stays) but are never picked for new orders
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=utcnow)
 
 
 class SupplierProduct(Base):

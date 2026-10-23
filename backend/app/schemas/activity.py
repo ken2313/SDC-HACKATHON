@@ -20,7 +20,7 @@ class ActivityLogOut(BaseModel):
     user_role: str | None
     action: str               # raw code, e.g. "po.approved"
     action_label: str         # readable, e.g. "Purchase order approved"
-    category: str             # inventory | stock | alert | purchase_order | access | other
+    category: str             # inventory | stock | alert | purchase_order | supplier | access | other
     entity_type: str
     entity_id: int | None
     entity_label: str | None  # product name or PO number, when it can be found

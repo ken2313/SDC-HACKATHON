@@ -31,8 +31,8 @@ PERM_ORDERS_APPROVE = "orders:approve"      # approve / reject orders: OWNER ONL
 # Added in Feature 4. The ones marked "later" are enforced by the feature that builds the screen.
 PERM_LOGS_VIEW = "logs:view"                # read the Activity Logs: OWNER ONLY (Feature 4)
 PERM_REPORTS_VIEW = "reports:view"          # reports and dashboard numbers: OWNER ONLY (later)
-PERM_SUPPLIERS_VIEW = "suppliers:view"      # see supplier records (later, Feature 6)
-PERM_SUPPLIERS_MANAGE = "suppliers:manage"  # add / edit suppliers and prices: OWNER ONLY (later, Feature 6)
+PERM_SUPPLIERS_VIEW = "suppliers:view"      # see suppliers, contacts, price lists, order history (Feature 6)
+PERM_SUPPLIERS_MANAGE = "suppliers:manage"  # add / edit / deactivate suppliers, set prices: OWNER ONLY (Feature 6)
 PERM_ORDERS_TRACK = "orders:track"          # update shipping / delay, confirm deliveries (Feature 5)
 PERM_ORDERS_PLACE = "orders:place"          # place an approved order with the supplier, cancel: OWNER ONLY (Feature 5)
 
@@ -49,8 +49,8 @@ PERMISSION_INFO: list[tuple[str, str, str]] = [
     (PERM_ORDERS_APPROVE, "Purchase orders", "Approve or reject purchase orders"),
     (PERM_ORDERS_TRACK, "Supplier orders", "Update shipping and delay status, confirm deliveries"),
     (PERM_ORDERS_PLACE, "Supplier orders", "Place an approved order with the supplier, cancel an order"),
-    (PERM_SUPPLIERS_VIEW, "Suppliers", "View suppliers (Feature 6)"),
-    (PERM_SUPPLIERS_MANAGE, "Suppliers", "Add and edit suppliers and prices (Feature 6)"),
+    (PERM_SUPPLIERS_VIEW, "Suppliers", "View suppliers, contacts, price lists and order history"),
+    (PERM_SUPPLIERS_MANAGE, "Suppliers", "Add, edit and deactivate suppliers, set product prices"),
     (PERM_REPORTS_VIEW, "Reports", "View reports and business totals (Feature 7)"),
     (PERM_LOGS_VIEW, "Audit", "View the Activity Logs"),
 ]
