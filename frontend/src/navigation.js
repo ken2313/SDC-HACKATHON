@@ -2,8 +2,7 @@
 // `live: true` means the page is built. Others show a "coming in Feature N" page
 // so the full structure is visible while we build one feature at a time.
 export const NAV_ITEMS = [
-  { label: "Dashboard", path: "/dashboard", live: false, feature: 7,
-    description: "Summary cards, charts, recent activity and upcoming deliveries, all read from the database." },
+  { label: "Dashboard", path: "/dashboard", live: true, feature: 7 },
   { label: "Inventory", path: "/inventory", live: true, feature: 1 },
   { label: "Stock Alerts", path: "/stock-alerts", live: true, feature: 2 },
   { label: "Purchase Orders", path: "/purchase-orders", live: true, feature: 3 },

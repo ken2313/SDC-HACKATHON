@@ -6,6 +6,7 @@ import { ToastProvider } from "./context/ToastContext.jsx";
 import { NAV_ITEMS } from "./navigation.js";
 import ActivityLogs from "./pages/ActivityLogs.jsx";
 import ComingSoon from "./pages/ComingSoon.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
 import Inventory from "./pages/Inventory.jsx";
 import PurchaseOrders from "./pages/PurchaseOrders.jsx";
 import StockAlerts from "./pages/StockAlerts.jsx";
@@ -39,8 +40,9 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Navigate to="/inventory" replace />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
         {/* key={user.id} reloads the page's data when the demo user is switched */}
+        <Route path="dashboard" element={<Dashboard key={user.id} />} />
         <Route path="inventory" element={<Inventory key={user.id} />} />
         <Route path="stock-alerts" element={<StockAlerts key={user.id} />} />
         <Route path="purchase-orders" element={<PurchaseOrders key={user.id} />} />
@@ -54,7 +56,7 @@ function AppRoutes() {
             element={<ComingSoon title={item.label} feature={item.feature} description={item.description} />}
           />
         ))}
-        <Route path="*" element={<Navigate to="/inventory" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   );
