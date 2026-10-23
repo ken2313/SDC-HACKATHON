@@ -4,6 +4,7 @@ import Spinner from "./components/Spinner.jsx";
 import { SessionProvider, useSession } from "./context/SessionContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
 import { NAV_ITEMS } from "./navigation.js";
+import ActivityLogs from "./pages/ActivityLogs.jsx";
 import ComingSoon from "./pages/ComingSoon.jsx";
 import Inventory from "./pages/Inventory.jsx";
 import PurchaseOrders from "./pages/PurchaseOrders.jsx";
@@ -41,6 +42,7 @@ function AppRoutes() {
         <Route path="inventory" element={<Inventory key={user.id} />} />
         <Route path="stock-alerts" element={<StockAlerts key={user.id} />} />
         <Route path="purchase-orders" element={<PurchaseOrders key={user.id} />} />
+        <Route path="activity-logs" element={<ActivityLogs key={user.id} />} />
         {NAV_ITEMS.filter((item) => !item.live).map((item) => (
           <Route
             key={item.path}

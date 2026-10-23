@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import app.models  # noqa: F401  (makes sure every table is registered)
 from app.database import Base, SessionLocal, engine
 from app.integrations import orbyte_mock
-from app.routers import alerts, inventory, purchase_orders
+from app.routers import access, activity_logs, alerts, inventory, purchase_orders
 from app.seed.seed_data import seed_if_empty, seed_suppliers_if_missing
 from app.services.alert_service import reconcile_all
 
@@ -57,6 +57,8 @@ app.include_router(orbyte_mock.router)
 app.include_router(inventory.router)
 app.include_router(alerts.router)
 app.include_router(purchase_orders.router)
+app.include_router(activity_logs.router)
+app.include_router(access.router)
 
 
 @app.get("/api/health", tags=["System"])

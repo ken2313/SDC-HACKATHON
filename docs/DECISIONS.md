@@ -50,3 +50,17 @@ Short notes on *why* things are built the way they are. Useful for the proposal 
 | **`rejected` added to the status list** | The brief asks for rejecting orders but its status list has no "rejected". |
 | **Employees may prepare and edit, not approve** | Matches the brief's role split. Full role-based rules and the Activity Logs page are Feature 4. |
 | **Unused columns (`received_quantity`, `inventory_applied`) already exist** | Feature 5 needs them to prevent a delivery adding stock twice. Adding them now avoids changing existing tables later. |
+
+## Feature 4: roles, approval and activity logs
+
+| Decision | Why |
+|---|---|
+| **One permission table drives the checks, the API and the GUI** | `PERMISSION_INFO` in `auth/permissions.py` is the single source. The owner's permission set is built from it, so a new permission cannot be forgotten for the owner, and the "Roles and permissions" screen can never disagree with the backend. |
+| **Permissions for Features 5 to 7 are defined now, enforced later** | The role design is settled in one place. Each later feature only attaches `require_permission(...)` to its new routes. |
+| **Blocked attempts write an `access.denied` log entry** | The brief wants permissions checked by the backend. Logging refusals proves it and gives the owner visibility. Written in its own commit and wrapped so a logging error can never change the 403. |
+| **Approval status is derived from the action code, not stored** | No new column, so existing Replit and local databases keep working with no migration. It cannot drift from the real decision. |
+| **The log API is read-only** | Audit trails must be trustworthy. There is no endpoint to edit or delete an entry, and a test checks that. |
+| **Owner-only log access** | The brief gives "view activity logs" to the Owner/Admin only. |
+| **Entity names are looked up when reading (3 queries per page)** | Entries store the record id. Names (product, PO number) are joined at read time, so the log still works if a name later changes, and no extra column is needed. |
+| **Date filters are UTC days** | Timestamps are stored in UTC. Documented as a limitation rather than hiding it. |
+| **Employees see the role table but not the log** | Transparency about the rules without exposing other people's activity. |

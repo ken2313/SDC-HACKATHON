@@ -15,8 +15,8 @@ export const NAV_ITEMS = [
     description: "Moving-average demand forecasts, run-out estimates and recommended reorder dates." },
   { label: "AI Anomaly Detection", path: "/anomalies", live: false, feature: 9,
     description: "A small PyTorch model running on a RunPod GPU flags unusual stock movements for human review." },
-  { label: "Activity Logs", path: "/activity-logs", live: false, feature: 4,
-    description: "Who did what and when, with previous and updated values. (Logging is already recording in the background.)" },
+  { label: "Activity Logs", path: "/activity-logs", live: true, feature: 4,
+    permission: "logs:view" }, // owner only: the sidebar hides it for employees, the backend enforces it
   { label: "Settings", path: "/settings", live: false, feature: null,
     description: "Business and notification settings. Planned for after the core features." },
 ];

@@ -15,7 +15,7 @@ We build **one feature at a time**.
 | 1 | Inventory management | **Code complete. Team must run the checks below before relying on it** |
 | 2 | Automatic low-stock alerts | **Code complete. Team must run the checks below before relying on it** |
 | 3 | Automatic purchase order generation | **Code complete. Team must run the checks below before relying on it** |
-| 4 | Human approval and activity logs (full RBAC + log page) | Planned (owner-only approve/reject and audit-log writing already started in Features 1 to 3; the Activity Logs page is Feature 4) |
+| 4 | Human approval and activity logs (full RBAC + log page) | **Code complete. Team must run the checks below before relying on it** |
 | 5 | Supplier order tracking | Planned |
 | 6 | Supplier management | Planned |
 | 7 | Inventory dashboard | Planned |
@@ -40,6 +40,11 @@ We build **one feature at a time**.
 - [ ] `pytest -v` passes in `backend/` (includes the new `test_purchase_orders_api.py`)
 - [ ] `npm run build` succeeds in `frontend/`
 - [ ] Manual purchase order demo below works in the browser
+
+**Feature 4**
+- [ ] `pytest -v` passes in `backend/` (includes the new `test_activity_logs_api.py`)
+- [ ] `npm run build` succeeds in `frontend/`
+- [ ] Manual approval and activity log demo below works in the browser
 
 ## Technology stack
 
@@ -236,16 +241,59 @@ Audit-log actions written: `po.generated`, `po.updated`, `po.line_removed`, `po.
 7. Press **Check restocking needs**: drafts appear for any other low products that have a supplier price (for example Cup Lids), grouped by supplier. Low products without a price are listed as "No supplier price on file".
 8. Optional: open `backend/data/inventory.db` and look at `purchase_orders`, `purchase_order_items` and the `po.*` rows in `activity_logs`.
 
+## Feature 4: Human approval and activity logs
+
+**What it adds:** one table of role rules that the backend enforces on every request, an owner-only **Activity Logs** page, and a record of blocked attempts. Features 1 to 3 already wrote the log and already made approval owner-only. Feature 4 completes the role rules and makes the log readable.
+
+| Role | Can | Cannot |
+|---|---|---|
+| **Owner / Admin** | Manage inventory, record stock, prepare orders, **approve / reject orders**, read the **Activity Logs**, (later) manage suppliers, view reports | n/a |
+| **Employee** | View inventory and alerts, **record stock movements**, **prepare / edit purchase order requests**, view orders, (later) track supplier orders | Approve or reject orders, add/edit/archive products, change reorder levels, read Activity Logs |
+
+- The rules live in one place: `PERMISSION_INFO` and `ROLE_PERMISSIONS` in `backend/app/auth/permissions.py`. Every route declares the permission it needs. The GUI hides buttons only for tidiness.
+- **Blocked attempts are logged.** When a role lacks a permission the backend answers 403 **and** writes an `access.denied` entry (who, which permission, which URL). The employee's action does not happen.
+- **What each log entry records:** user (or "System" for automatic actions), action, timestamp, affected product or order, previous and updated values, and the approval status (`approved`, `rejected` or `blocked`). The approval status is derived from the action code, so it can never disagree with what was decided.
+- **The log is append-only.** The API has no create, edit or delete endpoint for log entries. Entries are written in the same database transaction as the change they describe.
+- **Filters:** search text, type (products, stock, alerts, orders, blocked), approval, user and date range. 25 entries per page, newest first. Click **Details** for the field-by-field previous/updated values.
+- **Roles and permissions tab:** shows the rule table the backend enforces (`GET /api/access/matrix`).
+- Logs are separated per business, like every other table.
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| GET | `/api/activity-logs` | **Owner only** | List entries. Query: `category`, `action`, `approval`, `user_id`, `search`, `date_from`, `date_to`, `limit`, `offset` |
+| GET | `/api/activity-logs/summary` | **Owner only** | Counts for the page header |
+| GET | `/api/activity-logs/filters` | **Owner only** | Users and types for the filter boxes |
+| GET | `/api/access/matrix` | Any signed-in user | Role and permission table |
+
+Audit-log actions now visible on the page: `item.*`, `stock.in`, `stock.out`, `alert.opened`, `alert.resolved`, `po.generated`, `po.updated`, `po.line_removed`, `po.approved`, `po.rejected`, `access.denied`.
+
+### Manual demo (approval and audit trail)
+
+1. Choose **Hafiz Ismail (employee)**. The sidebar has **no Activity Logs** item. Open http://localhost:5173/activity-logs anyway: you see "Activity Logs are for the Owner / Admin" plus the roles table.
+2. In **Inventory**, remove 15 **Fresh Milk 1L** (20 -> 5). A draft order is prepared (Feature 3).
+3. In http://127.0.0.1:8000/docs call `POST /api/purchase-orders/1/approve` with header `X-User-Id: 2`. Result: **403**. The order is still a draft.
+4. Switch to **Aisyah Rahman (owner)** -> **Activity Logs**. You see, newest first: the blocked attempt (badge **Blocked**), plus the stock removal, alert and draft order from step 2.
+5. Click **Details** on the stock row: quantity **20 -> 5** and the reason.
+6. In **Purchase Orders** approve the order. Back in Activity Logs the new row shows **Approved** by Aisyah, with status `draft -> approved`.
+7. Filter **Approval = All decisions**, then **User = Hafiz Ismail**, then pick today's date. Press **Clear filters**.
+8. Switch to **Din Hassan** (other business): the log is empty of café entries.
+9. Open the **Roles and permissions** tab.
+
 ## Orbyte integration assumptions
 
 We have no access to Orbyte's real APIs. The mock layer (`backend/app/integrations/orbyte_mock.py`) assumes a host platform would tell our module: which business is calling, which user, and their role. We turn the role into permissions and write completed actions to the audit log. In a real integration the `X-User-Id` header would be replaced by Orbyte's verified token.
 
-## Known limitations (Features 1 to 3)
+## Known limitations (Features 1 to 4)
 
 - The simulated session has no passwords. It demonstrates role rules, not real security.
 - The supplier on a product is plain text until Feature 6.
 - The product list is not paginated (fine for SME-sized catalogues).
-- No Activity Logs page yet (Feature 4). Logs are written to the database already.
+- Only the Owner can read the Activity Logs. Employees cannot see even their own entries.
+- Log date filters use **UTC days** (the log stores UTC). A late-night entry in Malaysia (UTC+8) can fall on the previous UTC day.
+- The log is protected by the application only. Anyone with direct access to the SQLite file can change it. A production system would use a tamper-evident store.
+- "Permitted inventory records" for employees means all non-sensitive product fields. There is no per-product or per-location restriction.
+- Permissions for supplier screens, reports and delivery tracking are defined now but enforced when Features 5 to 7 add those screens.
+- There is no Submit for approval button yet: a draft is shown to the owner as "awaiting approval". The `pending_approval` status is reserved for Feature 5.
 - Alerts are only shown on the Stock Alerts page. There is no email or push notification.
 - Urgency uses a simple documented rule (half the threshold), not a forecast. Forecast-based urgency arrives with Feature 8.
 - Quantities are whole numbers only.
