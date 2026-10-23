@@ -17,6 +17,9 @@ from pathlib import Path
 _TEST_DB_FILE = Path(tempfile.mkdtemp(prefix="inventory_tests_")) / "test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_FILE.as_posix()}"
 os.environ["AUTO_SEED"] = "false"
+# Feature 9: tests must never call the real AI server on RunPod (even if .env sets it).
+# AI tests switch it on themselves and use a fake AI.
+os.environ["AI_BASE_URL"] = ""
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

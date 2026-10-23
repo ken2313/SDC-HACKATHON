@@ -1,6 +1,7 @@
 """Importing every model here makes sure SQLAlchemy knows about all tables."""
 from app.models.activity import ActivityLog
 from app.models.alert import StockAlert
+from app.models.anomaly import AnomalyFlag
 from app.models.business import Business, User
 from app.models.inventory import InventoryItem, StockMovement, compute_stock_status
 from app.models.order_history import OrderStatusHistory
@@ -9,6 +10,7 @@ from app.models.supplier import Supplier, SupplierProduct
 
 __all__ = [
     "ActivityLog",
+    "AnomalyFlag",
     "StockAlert",
     "Business",
     "User",

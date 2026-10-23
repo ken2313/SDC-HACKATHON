@@ -1,6 +1,6 @@
-"""Tests for ai_client.py using a fake local AI server (no RunPod needed).
+"""Tests for app/integrations/ai_client.py using a fake local AI server (no RunPod needed).
 
-Run from the repo root:  python ai\\test_ai_client.py -v
+Run from the backend folder:  python -m pytest tests/test_ai_client.py -v
 """
 import json
 import os
@@ -10,7 +10,7 @@ import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest import mock
 
-import ai_client
+from app.integrations import ai_client
 
 GOOD_MOVEMENT = {"request_id": "t-1", "product_id": "milk", "movement_type": "OUT",
                  "quantity": 40, "day_of_week": 2, "recent_avg_usage": 10,
