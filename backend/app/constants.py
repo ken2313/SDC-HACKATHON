@@ -52,6 +52,21 @@ PO_OUTSTANDING = (PO_DRAFT, PO_PENDING_APPROVAL, PO_APPROVED, PO_ORDERED, PO_SHI
 # Finished orders: they no longer block a new order for the same product
 PO_CLOSED = (PO_DELIVERED, PO_CANCELLED, PO_REJECTED)
 
+# Feature 5: supplier order tracking.
+# Statuses where the order has been approved but the goods have not arrived yet
+PO_IN_PROGRESS = (PO_APPROVED, PO_ORDERED, PO_SHIPPED, PO_DELAYED)
+# Statuses where "delivery overdue" can apply (the supplier has been given the order)
+PO_AWAITING_DELIVERY = (PO_ORDERED, PO_SHIPPED, PO_DELAYED)
+# Statuses from which goods can be received (delivery confirmed -> inventory updated)
+PO_RECEIVABLE = (PO_ORDERED, PO_SHIPPED, PO_DELAYED)
+# Allowed status changes after approval. Anything not listed here is refused.
+PO_TRANSITIONS = {
+    PO_APPROVED: (PO_ORDERED, PO_CANCELLED),
+    PO_ORDERED: (PO_SHIPPED, PO_DELAYED, PO_DELIVERED, PO_CANCELLED),
+    PO_SHIPPED: (PO_DELAYED, PO_DELIVERED, PO_CANCELLED),
+    PO_DELAYED: (PO_SHIPPED, PO_DELIVERED, PO_CANCELLED),
+}
+
 # How a purchase order was created
 PO_SOURCE_AUTO = "auto"      # created by the system after a low-stock alert
 PO_SOURCE_MANUAL = "manual"  # user pressed "Check restocking needs"

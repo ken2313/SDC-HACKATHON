@@ -13,9 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import app.models  # noqa: F401  (makes sure every table is registered)
 from app.database import Base, SessionLocal, engine
 from app.integrations import orbyte_mock
-from app.routers import access, activity_logs, alerts, inventory, purchase_orders
+from app.routers import access, activity_logs, alerts, inventory, purchase_orders, supplier_orders
 from app.seed.seed_data import seed_if_empty, seed_suppliers_if_missing
 from app.services.alert_service import reconcile_all
+from app.services.order_tracking_service import backfill_history
 
 
 @asynccontextmanager
@@ -29,6 +30,8 @@ async def lifespan(_app: FastAPI):
             seed_suppliers_if_missing(db)
         # Open alerts for products that are already low (safe to repeat)
         reconcile_all(db)
+        # Feature 5: give orders from before order tracking a starting timeline entry (safe to repeat)
+        backfill_history(db)
     yield
 
 
@@ -57,6 +60,7 @@ app.include_router(orbyte_mock.router)
 app.include_router(inventory.router)
 app.include_router(alerts.router)
 app.include_router(purchase_orders.router)
+app.include_router(supplier_orders.router)
 app.include_router(activity_logs.router)
 app.include_router(access.router)
 

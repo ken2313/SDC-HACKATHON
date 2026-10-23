@@ -16,7 +16,7 @@ We build **one feature at a time**.
 | 2 | Automatic low-stock alerts | **Code complete. Team must run the checks below before relying on it** |
 | 3 | Automatic purchase order generation | **Code complete. Team must run the checks below before relying on it** |
 | 4 | Human approval and activity logs (full RBAC + log page) | **Code complete. Team must run the checks below before relying on it** |
-| 5 | Supplier order tracking | Planned |
+| 5 | Supplier order tracking | **Code complete. Team must run the checks below before relying on it** |
 | 6 | Supplier management | Planned |
 | 7 | Inventory dashboard | Planned |
 | 8 | Demand forecasting | Planned |
@@ -41,10 +41,14 @@ We build **one feature at a time**.
 - [ ] `npm run build` succeeds in `frontend/`
 - [ ] Manual purchase order demo below works in the browser
 
-**Feature 4**
-- [ ] `pytest -v` passes in `backend/` (includes the new `test_activity_logs_api.py`)
+**Feature 4** (confirmed by the team: demo works locally)
+- [x] Manual approval and activity log demo works in the browser
+- [ ] `pytest -v` and `npm run build` results recorded here
+
+**Feature 5**
+- [ ] `pytest -v` passes in `backend/` (includes the new `test_supplier_orders_api.py`)
 - [ ] `npm run build` succeeds in `frontend/`
-- [ ] Manual approval and activity log demo below works in the browser
+- [ ] Manual supplier order demo below works in the browser
 
 ## Technology stack
 
@@ -279,11 +283,57 @@ Audit-log actions now visible on the page: `item.*`, `stock.in`, `stock.out`, `a
 8. Switch to **Din Hassan** (other business): the log is empty of café entries.
 9. Open the **Roles and permissions** tab.
 
+## Feature 5: Supplier order tracking
+
+**The workflow:** the owner approves an order (Feature 3) -> **Approved** -> the owner **places it with the supplier** (simulated) -> **Ordered** -> staff mark **Shipped** or **Delayed** -> someone **confirms the delivery** and the quantities that really arrived -> **Delivered** and the **inventory updates automatically, once** -> every step is in the order timeline and the Activity Log.
+
+| Rule | Detail |
+|---|---|
+| **What is tracked** | Orders the owner approved, plus their later states. Drafts and rejected orders are not shown here. |
+| **Allowed moves** | Approved -> Ordered or Cancelled. Ordered -> Shipped, Delayed, Delivered, Cancelled. Shipped <-> Delayed, Shipped/Delayed -> Delivered or Cancelled. Anything else (for example Approved -> Shipped) is refused with 409. Delivered and Cancelled are final. |
+| **Who** | **Owner only:** place with supplier, cancel (`orders:place`). **Owner and Employee:** mark shipped/delayed, confirm delivery (`orders:track`). The backend checks this; blocked attempts are logged. |
+| **Placing is simulated** | No real supplier is contacted. The timeline says "Simulated". The expected delivery date is set to today + the supplier's typical delivery time (Malaysia time). |
+| **Delayed** | Needs a new expected date (today or later) and an optional note. |
+| **Overdue** | Calculated, not stored: ordered / shipped / delayed, not delivered, and the expected date is before today (Malaysia time, UTC+8). Shown in red with the number of days. **Nothing changes status by itself:** a person marks the order Delayed. |
+| **Confirming a delivery** | Enter the received quantity for every line (0 or more, at least one item overall). Status, received quantities, stock, alerts, timeline and audit log are saved in **one transaction**. |
+| **No duplicate inventory updates** | Three protections: (1) only Ordered/Shipped/Delayed orders can receive; (2) a guarded `UPDATE ... WHERE inventory_applied = 0` lets only one request win; (3) every stock movement has a unique `request_id` (`po-receipt-<order>-<line>`), so the database refuses a second one. A second attempt returns 409 and changes nothing. |
+| **Short delivery** | Only what arrived is added. If a product is still low, the system prepares a new **draft** (never an approved order) for the owner. |
+| **Cancel** | Owner only, needs a reason, stock is never touched, and the products become free for a new order. |
+| **Alerts** | Receiving goods goes through the same alert check as any stock change, so a low-stock alert resolves automatically when stock is back above the reorder level. |
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| GET | `/api/supplier-orders?view=active\|overdue\|delivered\|cancelled\|all` | Owner, Employee | List tracked orders with timeline |
+| GET | `/api/supplier-orders/summary` | Owner, Employee | Counts for the page header |
+| GET | `/api/supplier-orders/{id}` | Owner, Employee | One order |
+| POST | `/api/supplier-orders/{id}/place` | **Owner only** | Place with supplier (simulated) |
+| POST | `/api/supplier-orders/{id}/status` | Owner, Employee | Mark `shipped` or `delayed` |
+| POST | `/api/supplier-orders/{id}/receive` | Owner, Employee | Confirm delivery, update stock once |
+| POST | `/api/supplier-orders/{id}/cancel` | **Owner only** | Cancel (reason required) |
+
+New table: `order_status_history` (the timeline). It is created automatically; no existing table changes. Orders from before this feature get a starting timeline entry at start-up. New audit-log actions: `po.placed`, `po.shipped`, `po.delayed`, `po.delivered`, `po.cancelled`.
+
+### Manual demo (the full café workflow)
+
+Use a fresh database for the cleanest run (stop the backend, delete `backend/data/inventory.db`, start again).
+
+1. **Hafiz Ismail (employee)** -> Inventory -> **Fresh Milk 1L** -> Stock -> *Remove stock* 15 (20 -> 5). A draft order is prepared.
+2. **Aisyah Rahman (owner)** -> Purchase Orders -> **Approve** the draft.
+3. **Supplier Orders**: the order is **Approved**. Click **Place with supplier (simulated)** -> confirm. Status **Ordered**, with an expected date.
+4. Switch to **Hafiz**. He sees the order but **no** Place or Cancel button. (In http://127.0.0.1:8000/docs, `POST /api/supplier-orders/1/cancel` with `X-User-Id: 2` returns **403**.)
+5. As Hafiz click **Mark delayed**, choose a date a few days ahead, add a note. Then **Mark shipped**.
+6. Click **Confirm delivery**. Leave 15 and confirm. Status **Delivered**; the message says Milk is now 20 cartons.
+7. Inventory shows Milk at **20**. Stock Alerts shows the alert under **Resolved**.
+8. Try to confirm the same delivery again (or double-click): refused, stock stays at 20.
+9. Open the **Timeline** on the order, then (as owner) **Activity Logs**: `po.placed`, `po.shipped`, `po.delivered`, `stock.in` and `alert.resolved` are there.
+10. Short delivery: repeat steps 1 to 6 but receive only **3**. Stock becomes 8 (still low) and a new draft order is prepared.
+11. Overdue check (testing shortcut only): open `backend/data/inventory.db` in *DB Browser for SQLite* -> **Execute SQL** -> run `UPDATE purchase_orders SET estimated_delivery_date = '2020-01-01' WHERE status = 'ordered';` -> **Write Changes**. Refresh the page: the order shows **Overdue** in red and appears under the **Overdue** tab. Its status does not change by itself.
+
 ## Orbyte integration assumptions
 
 We have no access to Orbyte's real APIs. The mock layer (`backend/app/integrations/orbyte_mock.py`) assumes a host platform would tell our module: which business is calling, which user, and their role. We turn the role into permissions and write completed actions to the audit log. In a real integration the `X-User-Id` header would be replaced by Orbyte's verified token.
 
-## Known limitations (Features 1 to 4)
+## Known limitations (Features 1 to 5)
 
 - The simulated session has no passwords. It demonstrates role rules, not real security.
 - The supplier on a product is plain text until Feature 6.
@@ -292,8 +342,13 @@ We have no access to Orbyte's real APIs. The mock layer (`backend/app/integratio
 - Log date filters use **UTC days** (the log stores UTC). A late-night entry in Malaysia (UTC+8) can fall on the previous UTC day.
 - The log is protected by the application only. Anyone with direct access to the SQLite file can change it. A production system would use a tamper-evident store.
 - "Permitted inventory records" for employees means all non-sensitive product fields. There is no per-product or per-location restriction.
-- Permissions for supplier screens, reports and delivery tracking are defined now but enforced when Features 5 to 7 add those screens.
-- There is no Submit for approval button yet: a draft is shown to the owner as "awaiting approval". The `pending_approval` status is reserved for Feature 5.
+- Permissions for supplier screens and reports are defined now but enforced when Features 6 and 7 add those screens.
+- There is no Submit for approval button: a draft is shown to the owner as "awaiting approval". The `pending_approval` status exists but is not used yet.
+- Supplier actions are simulated: nothing is sent to a supplier, and shipping/delay updates are typed in by staff.
+- A delivery is confirmed in one step. There are no partial deliveries over several days: a short delivery closes the order and, if stock is still low, a new draft is prepared.
+- Received quantities may exceed the ordered quantity (suppliers sometimes over-deliver). The log records both numbers.
+- "Overdue" uses Malaysia time (UTC+8) for every business.
+- Orders that were already Approved before Feature 5 can be placed straight away; their expected date is recalculated when placed.
 - Alerts are only shown on the Stock Alerts page. There is no email or push notification.
 - Urgency uses a simple documented rule (half the threshold), not a forecast. Forecast-based urgency arrives with Feature 8.
 - Quantities are whole numbers only.
