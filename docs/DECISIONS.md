@@ -100,3 +100,31 @@ Short notes on *why* things are built the way they are. Useful for the proposal 
 | **Late = more days than the usual delivery time, using Malaysia dates** | Simple and explainable. It uses the timeline from Feature 5 (placed and delivered times), so nothing new has to be recorded. |
 | **Employees can see prices and contacts** | They prepare purchase order requests and receive deliveries, so they need the contact and the price. Changing them is owner-only. |
 
+## Feature 7: inventory dashboard
+
+| Decision | Why |
+|---|---|
+| **One overview endpoint, plus one for the trend** | The page loads with one request (one consistent moment in time). The trend is separate because the user changes product and period without reloading everything. |
+| **Money totals are left out by the backend for employees** | `reports:view` is owner-only. Sending `null` instead of hiding the cards means the numbers never reach a browser that should not see them. The rest of the dashboard is operational and employees need it. |
+| **"Delayed" counts Delayed orders and overdue orders once** | Both mean "a delivery is late". A delayed order that is also past its new date is still one late delivery. |
+| **Stock value at the cheapest current supplier price** | It is the price the system would reorder at, and it is already in the database. It is labelled as an estimate; real purchase costs per batch are not tracked in this MVP. |
+| **Trend per product, not total units** | Cartons, bags and packs cannot be summed into a meaningful number. One product at a time with its own reorder line is honest and readable. |
+| **Trend rebuilt from stock movements** | No new table or nightly job. The movement ledger already has the quantity after every change, so the end-of-day stock is exact. |
+| **Synthetic history built backwards from today's stock** | The demo scenario (milk 20, reorder 10) must not change. Walking backwards guarantees the history ends at the current quantity and never goes negative; a fixed random seed gives every team member the same data. Products already used in a demo are skipped, so real demo data is never rewritten. |
+| **Recharts** | It is the charting library named in the brief, works with React, and needs no backend changes. |
+| **AI anomaly card is a labelled placeholder** | The brief wants anomaly alerts on the dashboard "when Feature 9 is implemented". Showing fake alerts would misrepresent the system. |
+
+## Feature 8: demand forecasting
+
+| Decision | Why |
+|---|---|
+| **7-day simple moving average** | The brief asks to start simple. It is easy to explain to an SME owner and to check by hand, and seven days contain every weekday once, so weekend peaks are averaged in rather than chased. |
+| **Accuracy is measured, not claimed** | A backtest over the last 14 days compares the prediction for each morning with what was really used. The accuracy figure (100% − WAPE) is shown for every product and low values come with a warning, so nobody trusts a shaky forecast blindly. |
+| **WAPE instead of a percentage error per day** | Days with zero use make per-day percentages divide by zero. Total error ÷ total use is stable and easy to read. |
+| **Order-by date uses the supplier's real delivery time** | The same supplier the drafts would use (cheapest active). A run-out date alone is not enough if the supplier needs four days. |
+| **Safety buffer of 2 days, order covers 7 days** | Simple, documented constants at the top of `forecast_service.py`. A small business can tune them in one place. |
+| **Suggest a reorder level, do not change it** | The forecast often shows the reorder level is too low (milk). The owner decides; applying it reuses the existing owner-only inventory route, so permissions and audit logging already work. |
+| **Drafts do not count as "on order"** | Nothing is ordered until the owner approves. Counting drafts would hide a real shortage. |
+| **Calculated on request, no forecast table** | Small catalogues make this fast, and results can never go stale. A `DemandForecasts` table can be added if forecasts need to be stored for history. |
+| **Not enough data = no number** | Below 7 days the method has no full window. Showing nothing plus a clear warning is more honest than a guess. |
+

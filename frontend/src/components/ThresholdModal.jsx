@@ -7,8 +7,9 @@ import StatusBadge from "./StatusBadge.jsx";
 
 // Owner-only: change the reorder threshold of one product.
 // `item` needs: item_id, item_name, sku, unit, quantity, reorder_threshold.
-export default function ThresholdModal({ item, onClose, onSaved }) {
-  const [text, setText] = useState(String(item.reorder_threshold));
+// `initialValue` (optional) pre-fills a suggested level, e.g. from the demand forecast (Feature 8).
+export default function ThresholdModal({ item, initialValue, onClose, onSaved }) {
+  const [text, setText] = useState(String(initialValue ?? item.reorder_threshold));
   const [serverError, setServerError] = useState(null);
   const [saving, setSaving] = useState(false);
 
