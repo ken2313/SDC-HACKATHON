@@ -22,6 +22,7 @@ We build **one feature at a time**.
 | 8 | Demand forecasting | **Code complete. Team must run the checks below before relying on it** |
 | 9 | AI anomaly detection on RunPod GPU | Planned |
 | 10 | Simulated Orbyte integration | Started (session/role mock); grows with each feature |
+| + | Sign-in page and Settings | **Code complete. Team must run the checks below before relying on it** |
 
 ### Verification checklist (tick when YOU have done it)
 
@@ -66,6 +67,11 @@ We build **one feature at a time**.
 - [ ] `pytest -v` passes in `backend/` (includes the new `test_forecasting_api.py`)
 - [ ] `npm run build` succeeds in `frontend/`
 - [ ] Manual forecasting demo below works in the browser
+
+**Sign-in and Settings**
+- [ ] `pytest -v` passes in `backend/` (includes the new `test_auth_settings_api.py`)
+- [ ] `npm run build` succeeds in `frontend/`
+- [ ] Manual sign-in and settings demo below works in the browser
 
 ## Technology stack
 
@@ -118,7 +124,8 @@ cd frontend
 npm install
 npm run dev
 ```
-Open http://localhost:5173
+Open http://localhost:5173 and sign in with the demo account (see "Sign-in page and Settings" below):
+**business123@gmail.com** / **SISO67#**
 
 **Run the backend tests** (Terminal 1, venv active):
 ```powershell
@@ -176,7 +183,7 @@ Every request carries `X-User-Id` (simulated Orbyte session). Missing or unknown
 2. Find **Fresh Milk 1L**: 20 cartons, reorder at 10, **In Stock**.
 3. Click **Stock** → *Remove stock* → 15. The preview shows 5 cartons and **Low Stock**. Confirm.
 4. Try removing 6 more: the form blocks it ("Only 5 available").
-5. Note there are no Add/Edit/Archive buttons for the employee. In http://127.0.0.1:8000/docs, a `POST /api/inventory` with header `X-User-Id: 2` returns **403**.
+5. Note there are no Add/Edit/Archive buttons for the employee. In http://127.0.0.1:8000/docs (click **Authorize** with a sign-in token first, see "Sign-in page and Settings"), a `POST /api/inventory` with header `X-User-Id: 2` returns **403**.
 6. Switch to **Aisyah Rahman (owner)**: add a product, edit a threshold, archive and restore a product.
 7. Switch to **Din Hassan** (*Kedai Runcit Pak Din*): a different business with different products.
 8. Optional: open `backend/data/inventory.db` in *DB Browser for SQLite* and look at `stock_movements` and `activity_logs`. (The Activity Logs page arrives in Feature 4.)
@@ -464,13 +471,64 @@ No new table and no new write endpoint: forecasts are calculated from `stock_mov
 6. In Inventory add a new product. On the forecasting page it shows **Not enough data** with the warning.
 7. Remove 15 milk, approve the draft in Purchase Orders: milk changes to **On order**.
 
+## Sign-in page and Settings
+
+**Sign-in:** the website now opens on a **sign-in page**. Every API route except signing in and `/api/health` answers **401** until you sign in.
+
+| | |
+|---|---|
+| Demo account | **business123@gmail.com** / **SISO67#** (synthetic, not a real mailbox) |
+| How it is checked | By the **backend**. The password is not in the website code and not stored as text: the backend keeps a salted PBKDF2-SHA256 hash and compares in constant time. |
+| Session | A signed token (HMAC-SHA256) valid for 12 hours, saved in the browser. Changing it in any way makes it invalid. |
+| Log out | Ends the session on the server too (the token stops working at once) and goes back to the sign-in page. |
+| Wrong passwords | After 5 wrong attempts in 5 minutes from one address, sign-in is blocked for the rest of the 5 minutes (429). |
+| Relation to roles | Signing in opens the workspace. The **user switcher** in the top bar still decides who you are (owner or employee), as before. In a real Orbyte integration both would come from Orbyte's own login. |
+
+Optional `.env` settings: `DEMO_LOGIN_EMAIL`, `DEMO_LOGIN_PASSWORD` (to use a different password), `SESSION_SECRET` (keeps you signed in across backend restarts; without it a restart signs everyone out), `SESSION_HOURS` (default 12).
+
+**Using http://127.0.0.1:8000/docs now:** first call `POST /api/auth/login` with the demo account, copy the `token`, click **Authorize** (top right) and paste it. Then add the `X-User-Id` header as before. The 403 demos in the earlier features still work this way.
+
+**Settings page:**
+
+| Section | What it does | Who |
+|---|---|---|
+| Account | Signed-in email, when the session ends, current demo user, **Log out** (with confirmation) | Everyone |
+| Business | **Business name** and **Prepare purchase order drafts automatically** (on/off). Saved in the database, written to the Activity Log (`business.updated`, type "Settings") | Change: **Owner only** (`settings:manage`). Employees see them read-only |
+| Preferences | **Start page** after signing in (Dashboard, Inventory, Stock Alerts, Purchase Orders, Demand Forecasting). Saved in this browser only | Everyone |
+| About this demo | Version, business, a note that data is synthetic and the integration simulated | Everyone |
+
+With automatic drafts switched off, a low product still gets its low-stock alert, and **Check restocking needs** on Purchase Orders still prepares drafts. The setting is per business. `AUTO_GENERATE_PO=false` in `.env` still switches it off for the whole server.
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| POST | `/api/auth/login` | Anyone | Sign in, get a token |
+| GET | `/api/auth/session` | Signed in | Is my token still valid? |
+| POST | `/api/auth/logout` | Signed in | End the session |
+| GET | `/api/settings` | Signed in | Business settings |
+| PATCH | `/api/settings` | **Owner only** | Change business name / automatic drafts |
+
+**Database:** one optional column `businesses.auto_draft_orders`, added automatically to existing databases at start-up (empty = on, as before).
+
+### Manual demo (sign-in and settings)
+
+1. Open http://localhost:5173: the sign-in page. Press **Sign in** with empty fields: both fields ask for input.
+2. Enter the email with a wrong password: "Wrong email or password." Then sign in with **business123@gmail.com** / **SISO67#**: the Dashboard opens. Reload the page: still signed in.
+3. Open **Settings** as **Aisyah (owner)**: change the business name and save. The top bar shows the new name; Activity Logs -> Type **Settings** shows the change.
+4. Switch **Prepare purchase order drafts automatically** off. Remove 15 Fresh Milk: the alert opens but no draft is prepared. Switch it back on.
+5. Choose **Inventory** as the start page.
+6. **Log out** -> confirm: back on the sign-in page with "You have signed out." Sign in again: Inventory opens.
+7. Switch to **Hafiz (employee)** -> Settings: the business settings are greyed out.
+8. In http://127.0.0.1:8000/docs try `GET /api/inventory` without Authorize: **401**.
+
 ## Orbyte integration assumptions
 
 We have no access to Orbyte's real APIs. The mock layer (`backend/app/integrations/orbyte_mock.py`) assumes a host platform would tell our module: which business is calling, which user, and their role. We turn the role into permissions and write completed actions to the audit log. In a real integration the `X-User-Id` header would be replaced by Orbyte's verified token.
 
-## Known limitations (Features 1 to 8)
+## Known limitations (Features 1 to 8, sign-in, settings)
 
-- The simulated session has no passwords. It demonstrates role rules, not real security.
+- There is one shared demo sign-in for the whole workspace, not one account per person. The user switcher (no password) still picks the role, to demonstrate role rules. A real deployment would use Orbyte's own login.
+- Signed-out tokens and failed sign-in counts are kept in memory: restarting the backend forgets them (and, without `SESSION_SECRET`, also signs everyone out).
+- The token is stored in the browser's localStorage, which is fine for a demo; a production app would prefer secure, http-only cookies.
 - The supplier shown on a product in Inventory is still a text label. What really links a product to a supplier is the supplier's price list. Adding a price fills an empty label; renaming a supplier updates matching labels.
 - The product list is not paginated (fine for SME-sized catalogues).
 - Only the Owner can read the Activity Logs. Employees cannot see even their own entries.

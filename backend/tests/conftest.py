@@ -17,6 +17,9 @@ from pathlib import Path
 _TEST_DB_FILE = Path(tempfile.mkdtemp(prefix="inventory_tests_")) / "test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_FILE.as_posix()}"
 os.environ["AUTO_SEED"] = "false"
+# The sign-in check is switched off for most tests (they focus on the business rules).
+# test_auth_settings_api.py switches it back on to test signing in.
+os.environ["REQUIRE_LOGIN"] = "false"
 # Feature 9: tests must never call the real AI server on RunPod (even if .env sets it).
 # AI tests switch it on themselves and use a fake AI.
 os.environ["AI_BASE_URL"] = ""

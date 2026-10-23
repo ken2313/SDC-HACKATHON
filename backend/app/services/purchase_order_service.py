@@ -39,6 +39,7 @@ from app.constants import (
 )
 from app.database import utcnow
 from app.models import (
+    Business,
     InventoryItem,
     PurchaseOrder,
     PurchaseOrderItem,
@@ -458,9 +459,13 @@ def auto_draft_for_item(db: Session, user: User, item_id: int) -> dict | None:
 
     This is best-effort: if anything goes wrong the stock change that already happened is
     NOT affected. Set AUTO_GENERATE_PO=false in .env to switch the automatic drafting off
-    (the 'Check restocking needs' button still works)."""
+    (the 'Check restocking needs' button still works). The owner can also switch it off
+    for one business on the Settings page."""
     if os.getenv("AUTO_GENERATE_PO", "true").lower() != "true":
         return None
+    business = db.get(Business, user.business_id)
+    if business is not None and business.auto_draft_orders is False:
+        return None  # switched off by the owner on the Settings page
     try:
         result = generate_drafts(db, user, PO_SOURCE_AUTO, [item_id])
         if result["lines_added"] == 0:
