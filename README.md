@@ -4,6 +4,9 @@ Hackathon MVP for the **Orbyte Smart SME Challenge: Less Busywork, Better Busine
 
 A module that could plug into Orbyte and help Malaysian micro and small businesses watch stock, order from suppliers and catch unusual inventory movements, with a human approving every consequential action.
 
+**Live demo (Our Website):** https://smart-inventory-sdc.replit.app
+Sign in with the demo account: business123@gmail.com / Password: SISO67#
+
 > **All data in this project is synthetic.** The Orbyte integration is **simulated**. The endpoints under `/api/orbyte-mock` are **not official Orbyte APIs**.
 
 ## Build status
