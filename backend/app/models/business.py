@@ -12,6 +12,9 @@ class Business(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    # Settings page: prepare purchase order drafts automatically when stock runs low.
+    # NULL (older databases) means "on", the behaviour before this setting existed.
+    auto_draft_orders: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=True)
 
     users: Mapped[list["User"]] = relationship(back_populates="business")
 

@@ -7,20 +7,23 @@ Interactive API docs: http://127.0.0.1:8000/docs
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import app.models  # noqa: F401  (makes sure every table is registered)
+from app.auth.login import require_login
 from app.database import Base, SessionLocal, engine
 from app.integrations import orbyte_mock
 from app.routers import (
     access,
     activity_logs,
     alerts,
+    auth,
     dashboard,
     forecasts,
     inventory,
     purchase_orders,
+    settings,
     supplier_orders,
     suppliers,
 )
@@ -76,16 +79,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(orbyte_mock.router)
-app.include_router(inventory.router)
-app.include_router(alerts.router)
-app.include_router(purchase_orders.router)
-app.include_router(supplier_orders.router)
-app.include_router(suppliers.router)
-app.include_router(dashboard.router)
-app.include_router(forecasts.router)
-app.include_router(activity_logs.router)
-app.include_router(access.router)
+# Signing in is open; everything else needs a signed-in session (see app/auth/login.py).
+app.include_router(auth.router)
+SIGNED_IN = [Depends(require_login)]
+for module in (
+    orbyte_mock, inventory, alerts, purchase_orders, supplier_orders, suppliers,
+    dashboard, forecasts, settings, activity_logs, access,
+):
+    app.include_router(module.router, dependencies=SIGNED_IN)
 
 
 @app.get("/api/health", tags=["System"])
