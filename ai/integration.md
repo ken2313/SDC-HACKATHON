@@ -1,7 +1,7 @@
-# AI & Orbyte Integration Guide (feature/ai-anomaly)
+# AI Integration Guide (feature/ai-anomaly)
 
 Owner: Tati (AI & Integration). This explains how the backend uses the AI
-anomaly service and the simulated Orbyte layer.
+anomaly service, and how it fits with the simulated Orbyte layer.
 
 ## What's in this branch
 | Path | Purpose |
@@ -10,8 +10,6 @@ anomaly service and the simulated Orbyte layer.
 | `ai/ai_client.py` | Backend client: timeout, retry, validation, fallback |
 | `ai/start_server.sh` | One-command server start on the Pod |
 | `ai/test_ai_client.py` | 11 tests (fake server, no GPU needed) |
-| `integration/orbyte_mock.py` | **Simulated** Orbyte: business, roles, permissions, action log |
-| `integration/test_orbyte_mock.py` | 12 tests |
 
 ## Environment variables (never commit values)
 | Name | Example | Notes |
@@ -19,7 +17,6 @@ anomaly service and the simulated Orbyte layer.
 | `AI_BASE_URL` | `https://<pod-id>-8000.proxy.runpod.net` | Changes if the Pod is redeployed |
 | `INFERENCE_TOKEN` | *(secret)* | Sent as `x-api-token`. Set in Replit Secrets, never in code |
 | `AI_TIMEOUT_S` | `2.5` | Optional |
-| `ORBYTE_MOCK_LOG` | `integration/data/orbyte_actions.jsonl` | Optional, git-ignored |
 
 ## Calling the AI
 ```python
@@ -53,25 +50,20 @@ Show only the **first** item of `top_contributing_features`; later items can be 
 1. Employee records stock OUT → backend saves the movement first (inside a transaction).
 2. Backend calls `score_movement()` with the movement's `request_id`.
 3. Store the result (status, score, request_id). A retry with the same `request_id` must not create a second record.
-4. Dashboard shows flagged items. Employee reviews → backend checks `anomaly.review` permission → logs the review.
+4. Dashboard shows flagged items. Employee reviews → backend checks permission → logs the review.
 
 The AI call happens **after** the stock update, so stock never depends on RunPod.
 
 ## Orbyte (simulated)
-```python
-from integration.orbyte_mock import has_permission, require_permission, log_completed_action
-
-require_permission(user_id, business_id, "po.approve")   # raises PermissionDenied
-log_completed_action(business_id, user_id, "po.approve", {"po_id": "PO-001"}, request_id)
-```
-Demo users: `u-owner-1` (owner), `u-mgr-1` (manager), `u-emp-1` (employee) in `BIZ-CAFE-001`;
-`u-owner-2` owns `BIZ-MART-002` (used to show business isolation). Only the owner can `po.approve`.
-Everything returned is labelled `source: "orbyte-simulated"`. We have no real Orbyte API access.
+The official simulated Orbyte layer is `backend/app/integrations/orbyte_mock.py` (Friend 1's).
+AI features must use it, not a separate mock:
+- identify the user via `get_current_user` (`X-User-Id` header)
+- check permissions via `app/auth/permissions.py` (e.g. reviewing an anomaly)
+- record completed actions in the `ActivityLogs` table
 
 ## Running tests (from repo root)
 ```
 python ai\test_ai_client.py -v
-python integration\test_orbyte_mock.py -v
 ```
 
 ## RunPod (demo day)
