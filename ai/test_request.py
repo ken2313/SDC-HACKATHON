@@ -10,7 +10,8 @@ def call(path, payload=None):
     data = json.dumps(payload).encode() if payload else None
     req = urllib.request.Request(BASE + path, data=data,
                                  headers={"Content-Type": "application/json",
-                                          "x-api-token": TOKEN})
+                                          "x-api-token": TOKEN,
+                                          "User-Agent": "siso-ai-test-client/1.0"})
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.loads(r.read())
 
