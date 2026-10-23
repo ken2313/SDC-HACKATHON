@@ -64,3 +64,22 @@ Short notes on *why* things are built the way they are. Useful for the proposal 
 | **Entity names are looked up when reading (3 queries per page)** | Entries store the record id. Names (product, PO number) are joined at read time, so the log still works if a name later changes, and no extra column is needed. |
 | **Date filters are UTC days** | Timestamps are stored in UTC. Documented as a limitation rather than hiding it. |
 | **Employees see the role table but not the log** | Transparency about the rules without exposing other people's activity. |
+
+## Feature 5: supplier order tracking
+
+| Decision | Why |
+|---|---|
+| **A fixed list of allowed status moves (`PO_TRANSITIONS`)** | An order cannot skip a step (Approved -> Delivered) or go backwards. The list is one constant, so the rules are easy to read and test. |
+| **Every move is a guarded UPDATE (`WHERE status = <old status>`)** | If two people act at once only one wins; the other gets a clear 409 instead of overwriting. Same pattern as approve/reject in Feature 3. |
+| **Placing and cancelling are owner-only (`orders:place`); shipping, delay and receiving are for staff too (`orders:track`)** | Placing spends money, cancelling discards an approved decision. Staff at the door are the people who know what arrived and what the supplier said. |
+| **"Place with supplier" is a simulation and says so** | No supplier API exists. The timeline note and the dialog both state that nothing was sent. |
+| **Overdue is calculated, never stored, and never changes status** | It cannot go stale, and the system does not act on its own. A person decides to mark an order Delayed. |
+| **Malaysia time (fixed UTC+8) decides "today"** | Malaysia has no daylight saving, so a fixed offset is exact, and it avoids needing time-zone packages on Windows or Replit. |
+| **One transaction for a delivery** | Status, received quantities, stock movements, alerts, history and audit log are saved together or not at all. |
+| **Three layers against double stock updates** | Status check, a guarded `inventory_applied` flip, and a unique `request_id` on each stock movement. Each is tested, including the case where the first two are deliberately reset. |
+| **Receiving writes the stock movement itself instead of calling `record_movement`** | `record_movement` commits on its own. A delivery needs the stock change inside the same transaction as the order change. The rules are copied (stock added with an UPDATE, a movement row, a log row, an alert check). |
+| **A short delivery closes the order and may prepare a new DRAFT** | Simple and honest for an MVP. The owner still approves any follow-up order. Multi-day partial deliveries are listed as a limitation. |
+| **Cancelling frees the products (`outstanding = 0`)** | Otherwise the "one outstanding order per product" rule from Feature 3 would block a replacement order forever. |
+| **New table `order_status_history`, no changes to existing tables** | `create_all` adds new tables safely. The existing `estimated_delivery_date`, `received_quantity` and `inventory_applied` columns (added in Feature 3 for this purpose) are reused. |
+| **Start-up backfill of history** | Orders created before this feature still get a timeline. It skips orders that already have history, so repeating it is harmless. |
+| **History helper in its own file** | The purchase order service and the tracking service both write history; a shared file avoids them importing each other. |

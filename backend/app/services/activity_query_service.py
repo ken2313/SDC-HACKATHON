@@ -27,6 +27,11 @@ ACTION_LABELS = {
     "po.line_removed": "Product removed from order",
     "po.approved": "Purchase order approved",
     "po.rejected": "Purchase order rejected",
+    "po.placed": "Order placed with supplier (simulated)",
+    "po.shipped": "Order marked shipped",
+    "po.delayed": "Order marked delayed",
+    "po.delivered": "Delivery confirmed",
+    "po.cancelled": "Order cancelled",
     "access.denied": "Action blocked (no permission)",
 }
 

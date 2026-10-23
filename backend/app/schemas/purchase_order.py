@@ -69,6 +69,7 @@ class OrderLineOut(BaseModel):
     min_order_qty: int | None
     current_quantity: int    # stock on hand right now
     reorder_threshold: int
+    received_quantity: int = 0  # Feature 5: filled when a delivery is confirmed
 
 
 class EligibleSupplier(BaseModel):

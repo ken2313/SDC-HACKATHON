@@ -48,6 +48,7 @@ from app.models import (
 )
 from app.services.activity_service import log_activity
 from app.services.alert_service import list_alerts
+from app.services.order_history_helper import record_history
 from app.schemas.purchase_order import OrderReject, OrderUpdate
 
 logger = logging.getLogger(__name__)
@@ -243,6 +244,7 @@ def _order_dict(db: Session, order: PurchaseOrder) -> dict:
                 "min_order_qty": min_orders.get(line.item_id),
                 "current_quantity": item.quantity,
                 "reorder_threshold": item.reorder_threshold,
+                "received_quantity": line.received_quantity,
             }
         )
 
@@ -376,6 +378,7 @@ def _generate_once(db: Session, user: User, source: str, item_ids: list[int] | N
             )
             db.add(order)
             db.flush()  # gives the order an id
+            record_history(db, order, user, None, PO_DRAFT, "Order created")
 
         added = []
         for need, product_offer, _supplier in entries:
@@ -646,6 +649,7 @@ def approve_order(db: Session, user: User, order_id: int) -> dict:
         db.rollback()
         raise OrderError("This order was just decided by someone else. Refresh the page.", 409)
 
+    record_history(db, order, user, old_status, PO_APPROVED)
     log_activity(
         db, user, "po.approved", "purchase_order", order.id,
         f"Approved {order.po_number} for {supplier.name}: RM {total:.2f}",
@@ -684,6 +688,7 @@ def reject_order(db: Session, user: User, order_id: int, data: OrderReject) -> d
     db.execute(
         update(PurchaseOrderItem).where(PurchaseOrderItem.purchase_order_id == order.id).values(outstanding=False)
     )
+    record_history(db, order, user, old_status, PO_REJECTED, data.reason)
     log_activity(
         db, user, "po.rejected", "purchase_order", order.id,
         f"Rejected {order.po_number} (RM {total:.2f}): {data.reason}"[:255],
