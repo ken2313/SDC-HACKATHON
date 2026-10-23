@@ -4,6 +4,10 @@ import { useSession } from "../context/SessionContext.jsx";
 import { NAV_ITEMS } from "../navigation.js";
 
 function Sidebar({ onNavigate }) {
+  const { can } = useSession();
+  // Items that need a permission are hidden from roles without it. This is only tidiness:
+  // the backend refuses the request anyway.
+  const items = NAV_ITEMS.filter((item) => !item.permission || can(item.permission));
   return (
     <nav className="flex h-full flex-col bg-slate-900 text-slate-300">
       <div className="flex items-center gap-3 px-5 py-5">
@@ -14,7 +18,7 @@ function Sidebar({ onNavigate }) {
         </div>
       </div>
       <ul className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <li key={item.path}>
             <NavLink
               to={item.path}
