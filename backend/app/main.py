@@ -18,6 +18,7 @@ from app.routers import (
     activity_logs,
     alerts,
     dashboard,
+    forecasts,
     inventory,
     purchase_orders,
     supplier_orders,
@@ -82,6 +83,7 @@ app.include_router(purchase_orders.router)
 app.include_router(supplier_orders.router)
 app.include_router(suppliers.router)
 app.include_router(dashboard.router)
+app.include_router(forecasts.router)
 app.include_router(activity_logs.router)
 app.include_router(access.router)
 

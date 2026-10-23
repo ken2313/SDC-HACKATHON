@@ -7,6 +7,7 @@ import { NAV_ITEMS } from "./navigation.js";
 import ActivityLogs from "./pages/ActivityLogs.jsx";
 import ComingSoon from "./pages/ComingSoon.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import Forecasting from "./pages/Forecasting.jsx";
 import Inventory from "./pages/Inventory.jsx";
 import PurchaseOrders from "./pages/PurchaseOrders.jsx";
 import StockAlerts from "./pages/StockAlerts.jsx";
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="purchase-orders" element={<PurchaseOrders key={user.id} />} />
         <Route path="supplier-orders" element={<SupplierOrders key={user.id} />} />
         <Route path="suppliers" element={<Suppliers key={user.id} />} />
+        <Route path="forecasting" element={<Forecasting key={user.id} />} />
         <Route path="activity-logs" element={<ActivityLogs key={user.id} />} />
         {NAV_ITEMS.filter((item) => !item.live).map((item) => (
           <Route
