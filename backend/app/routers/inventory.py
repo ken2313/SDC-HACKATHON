@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth.permissions import (
@@ -9,6 +9,7 @@ from app.auth.permissions import (
     PERM_STOCK_RECORD,
     require_permission,
 )
+from app.constants import MOVEMENT_OUT
 from app.database import get_db
 from app.models import User
 from app.schemas.inventory import (
@@ -23,6 +24,7 @@ from app.schemas.inventory import (
 )
 from app.services import inventory_service as service
 from app.services import purchase_order_service
+from app.services.anomaly_service import check_movement_for_anomaly
 from app.services.inventory_service import InventoryError
 
 router = APIRouter(prefix="/api/inventory", tags=["Inventory"])
@@ -122,7 +124,13 @@ def restore_product(item_id: int, db: DbSession, user: Manager):
 
 
 @router.post("/{item_id}/movements", response_model=MovementResult, status_code=201)
-def record_stock_movement(item_id: int, data: MovementCreate, db: DbSession, user: StockRecorder):
+def record_stock_movement(
+    item_id: int,
+    data: MovementCreate,
+    db: DbSession,
+    user: StockRecorder,
+    background_tasks: BackgroundTasks,
+):
     try:
         movement, item, already_applied = service.record_movement(db, user, item_id, data)
     except InventoryError as error:
@@ -130,6 +138,10 @@ def record_stock_movement(item_id: int, data: MovementCreate, db: DbSession, use
     movement_user = db.get(User, movement.user_id)
     movement.user_name = movement_user.name if movement_user else None
     draft = None if already_applied else _prepare_draft_if_low(db, user, item)
+    # Feature 9: AI anomaly check runs AFTER the response, so the stock change never
+    # waits for (or depends on) the AI. Retries (already_applied) are not re-checked.
+    if not already_applied and movement.movement_type == MOVEMENT_OUT:
+        background_tasks.add_task(check_movement_for_anomaly, movement.id)
     return MovementResult(
         movement=MovementOut.model_validate(movement),
         item=ItemOut.model_validate(item),

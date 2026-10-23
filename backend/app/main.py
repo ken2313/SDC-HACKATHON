@@ -18,6 +18,7 @@ from app.routers import (
     access,
     activity_logs,
     alerts,
+    anomalies,
     auth,
     dashboard,
     forecasts,
@@ -84,7 +85,7 @@ app.include_router(auth.router)
 SIGNED_IN = [Depends(require_login)]
 for module in (
     orbyte_mock, inventory, alerts, purchase_orders, supplier_orders, suppliers,
-    dashboard, forecasts, settings, activity_logs, access,
+    dashboard, forecasts, anomalies, settings, activity_logs, access,
 ):
     app.include_router(module.router, dependencies=SIGNED_IN)
 

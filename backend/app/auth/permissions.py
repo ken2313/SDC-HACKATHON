@@ -36,6 +36,9 @@ PERM_SUPPLIERS_MANAGE = "suppliers:manage"  # add / edit / deactivate suppliers,
 PERM_ORDERS_TRACK = "orders:track"          # update shipping / delay, confirm deliveries (Feature 5)
 PERM_SETTINGS_MANAGE = "settings:manage"    # change business settings: OWNER ONLY (Settings page)
 PERM_ORDERS_PLACE = "orders:place"          # place an approved order with the supplier, cancel: OWNER ONLY (Feature 5)
+# Added in Feature 9 (AI anomaly detection)
+PERM_ANOMALIES_VIEW = "anomalies:view"      # see AI anomaly flags
+PERM_ANOMALIES_REVIEW = "anomalies:review"  # mark an AI flag as reviewed, with a note
 
 # One table drives everything: the permission checks, the /api/access/matrix endpoint
 # and the "Roles & permissions" panel on the Activity Logs page.
@@ -52,6 +55,8 @@ PERMISSION_INFO: list[tuple[str, str, str]] = [
     (PERM_ORDERS_PLACE, "Supplier orders", "Place an approved order with the supplier, cancel an order"),
     (PERM_SUPPLIERS_VIEW, "Suppliers", "View suppliers, contacts, price lists and order history"),
     (PERM_SUPPLIERS_MANAGE, "Suppliers", "Add, edit and deactivate suppliers, set product prices"),
+    (PERM_ANOMALIES_VIEW, "AI anomalies", "See unusual stock movements flagged by the AI"),
+    (PERM_ANOMALIES_REVIEW, "AI anomalies", "Review an AI flag and record what was found"),
     (PERM_REPORTS_VIEW, "Reports", "See money totals on the dashboard (stock value, orders, spending)"),
     (PERM_LOGS_VIEW, "Audit", "View the Activity Logs"),
     (PERM_SETTINGS_MANAGE, "Settings", "Change business settings (name, automatic order drafts)"),
@@ -60,10 +65,12 @@ PERMISSION_INFO: list[tuple[str, str, str]] = [
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     # Owner / Admin: everything
     ROLE_OWNER: {permission for permission, _area, _text in PERMISSION_INFO},
-    # Employee: can work with stock and prepare orders, can NOT approve, manage or audit
+    # Employee: can work with stock and prepare orders, can NOT approve, manage or audit.
+    # Employees can review AI flags, because they are the ones who know what really happened.
     ROLE_EMPLOYEE: {
         PERM_INVENTORY_VIEW, PERM_STOCK_RECORD, PERM_ALERTS_VIEW,
         PERM_ORDERS_VIEW, PERM_ORDERS_PREPARE, PERM_ORDERS_TRACK, PERM_SUPPLIERS_VIEW,
+        PERM_ANOMALIES_VIEW, PERM_ANOMALIES_REVIEW,
     },
 }
 

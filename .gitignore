@@ -16,6 +16,10 @@ __pycache__/
 *.sqlite3
 backend/data/
 
+# --- AI / integration (generated synthetic data and local logs) ---
+ai/data/
+integration/data/
+
 # --- Node / frontend ---
 node_modules/
 frontend/dist/

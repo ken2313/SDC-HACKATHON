@@ -9,7 +9,8 @@ export const NAV_ITEMS = [
   { label: "Supplier Orders", path: "/supplier-orders", live: true, feature: 5 },
   { label: "Suppliers", path: "/suppliers", live: true, feature: 6 },
   { label: "Demand Forecasting", path: "/forecasting", live: true, feature: 8 },
-  { label: "AI Anomaly Detection", path: "/anomalies", live: false, feature: 9,
+  { label: "AI Anomaly Detection", path: "/anomalies", live: true, feature: 9,
+    permission: "anomalies:view",
     description: "A small PyTorch model running on a RunPod GPU flags unusual stock movements for human review." },
   { label: "Activity Logs", path: "/activity-logs", live: true, feature: 4,
     permission: "logs:view" }, // owner only: the sidebar hides it for employees, the backend enforces it

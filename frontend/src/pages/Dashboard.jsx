@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { dashboardApi } from "../api/dashboard.js";
+import AnomalyFlagsCard from "../components/AnomalyFlagsCard.jsx";
 import OrderStatusBadge from "../components/OrderStatusBadge.jsx";
 import Spinner from "../components/Spinner.jsx";
 import UrgencyBadge from "../components/UrgencyBadge.jsx";
@@ -364,20 +365,6 @@ function ActivityPanel({ rows }) {
   );
 }
 
-function AnomalyPanel({ status }) {
-  return (
-    <Panel title="AI anomaly alerts" subtitle="Unusual stock movements flagged for human review">
-      <div className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center">
-        <span className="inline-block rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
-          Planned for Feature 9
-        </span>
-        <p className="mt-3 text-sm text-slate-600">{status.message}</p>
-        <p className="mt-1 text-xs text-slate-500">Nothing is shown here until real results from the RunPod model exist.</p>
-      </div>
-    </Panel>
-  );
-}
-
 // ---------------------------------------------------------------- page
 
 export default function Dashboard() {
@@ -485,7 +472,8 @@ export default function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <ActivityPanel rows={data.recent_activity} />
-        <AnomalyPanel status={data.anomalies} />
+        {/* Feature 9: real AI anomaly alerts (replaces the "Planned for Feature 9" placeholder) */}
+        <AnomalyFlagsCard />
       </div>
     </div>
   );
