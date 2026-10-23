@@ -100,3 +100,17 @@ Short notes on *why* things are built the way they are. Useful for the proposal 
 | **Late = more days than the usual delivery time, using Malaysia dates** | Simple and explainable. It uses the timeline from Feature 5 (placed and delivered times), so nothing new has to be recorded. |
 | **Employees can see prices and contacts** | They prepare purchase order requests and receive deliveries, so they need the contact and the price. Changing them is owner-only. |
 
+## Feature 7: inventory dashboard
+
+| Decision | Why |
+|---|---|
+| **One overview endpoint, plus one for the trend** | The page loads with one request (one consistent moment in time). The trend is separate because the user changes product and period without reloading everything. |
+| **Money totals are left out by the backend for employees** | `reports:view` is owner-only. Sending `null` instead of hiding the cards means the numbers never reach a browser that should not see them. The rest of the dashboard is operational and employees need it. |
+| **"Delayed" counts Delayed orders and overdue orders once** | Both mean "a delivery is late". A delayed order that is also past its new date is still one late delivery. |
+| **Stock value at the cheapest current supplier price** | It is the price the system would reorder at, and it is already in the database. It is labelled as an estimate; real purchase costs per batch are not tracked in this MVP. |
+| **Trend per product, not total units** | Cartons, bags and packs cannot be summed into a meaningful number. One product at a time with its own reorder line is honest and readable. |
+| **Trend rebuilt from stock movements** | No new table or nightly job. The movement ledger already has the quantity after every change, so the end-of-day stock is exact. |
+| **Synthetic history built backwards from today's stock** | The demo scenario (milk 20, reorder 10) must not change. Walking backwards guarantees the history ends at the current quantity and never goes negative; a fixed random seed gives every team member the same data. Products already used in a demo are skipped, so real demo data is never rewritten. |
+| **Recharts** | It is the charting library named in the brief, works with React, and needs no backend changes. |
+| **AI anomaly card is a labelled placeholder** | The brief wants anomaly alerts on the dashboard "when Feature 9 is implemented". Showing fake alerts would misrepresent the system. |
+

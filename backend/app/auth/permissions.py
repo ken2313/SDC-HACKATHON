@@ -30,7 +30,7 @@ PERM_ORDERS_PREPARE = "orders:prepare"      # generate and edit order drafts (Fe
 PERM_ORDERS_APPROVE = "orders:approve"      # approve / reject orders: OWNER ONLY (Feature 3)
 # Added in Feature 4. The ones marked "later" are enforced by the feature that builds the screen.
 PERM_LOGS_VIEW = "logs:view"                # read the Activity Logs: OWNER ONLY (Feature 4)
-PERM_REPORTS_VIEW = "reports:view"          # reports and dashboard numbers: OWNER ONLY (later)
+PERM_REPORTS_VIEW = "reports:view"          # money totals on the dashboard: OWNER ONLY (Feature 7)
 PERM_SUPPLIERS_VIEW = "suppliers:view"      # see suppliers, contacts, price lists, order history (Feature 6)
 PERM_SUPPLIERS_MANAGE = "suppliers:manage"  # add / edit / deactivate suppliers, set prices: OWNER ONLY (Feature 6)
 PERM_ORDERS_TRACK = "orders:track"          # update shipping / delay, confirm deliveries (Feature 5)
@@ -51,7 +51,7 @@ PERMISSION_INFO: list[tuple[str, str, str]] = [
     (PERM_ORDERS_PLACE, "Supplier orders", "Place an approved order with the supplier, cancel an order"),
     (PERM_SUPPLIERS_VIEW, "Suppliers", "View suppliers, contacts, price lists and order history"),
     (PERM_SUPPLIERS_MANAGE, "Suppliers", "Add, edit and deactivate suppliers, set product prices"),
-    (PERM_REPORTS_VIEW, "Reports", "View reports and business totals (Feature 7)"),
+    (PERM_REPORTS_VIEW, "Reports", "See money totals on the dashboard (stock value, orders, spending)"),
     (PERM_LOGS_VIEW, "Audit", "View the Activity Logs"),
 ]
 
@@ -64,6 +64,12 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         PERM_ORDERS_VIEW, PERM_ORDERS_PREPARE, PERM_ORDERS_TRACK, PERM_SUPPLIERS_VIEW,
     },
 }
+
+
+def has_permission(user: User, permission: str) -> bool:
+    """For a route that shows MORE to some roles (e.g. money totals on the dashboard)
+    instead of refusing the whole request."""
+    return permission in ROLE_PERMISSIONS.get(user.role, set())
 
 
 def permissions_for(role: str) -> list[str]:
