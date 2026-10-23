@@ -6,6 +6,7 @@ import { SessionProvider, useSession } from "./context/SessionContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
 import { NAV_ITEMS } from "./navigation.js";
 import ActivityLogs from "./pages/ActivityLogs.jsx";
+import AnomalyDetection from "./pages/AnomalyDetection.jsx";
 import ComingSoon from "./pages/ComingSoon.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Forecasting from "./pages/Forecasting.jsx";
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="supplier-orders" element={<SupplierOrders key={user.id} />} />
         <Route path="suppliers" element={<Suppliers key={user.id} />} />
         <Route path="forecasting" element={<Forecasting key={user.id} />} />
+        <Route path="anomalies" element={<AnomalyDetection key={user.id} />} />
         <Route path="settings" element={<Settings key={user.id} />} />
         <Route path="activity-logs" element={<ActivityLogs key={user.id} />} />
         {NAV_ITEMS.filter((item) => !item.live).map((item) => (
