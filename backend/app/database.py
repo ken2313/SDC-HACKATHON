@@ -2,7 +2,8 @@
 
 The database file lives in backend/data/inventory.db and is NOT committed to
 GitHub. It is created automatically on first run and filled with synthetic data.
-Set DATABASE_URL in your environment to use a different database (the tests do).
+Set DATABASE_URL to a different SQLite file to use another database (the tests do).
+A non-SQLite DATABASE_URL (for example Replit's PostgreSQL) is ignored.
 """
 import os
 from datetime import datetime, timezone
@@ -22,7 +23,25 @@ load_dotenv(PROJECT_ROOT / ".env")
 DATA_DIR = BACKEND_DIR / "data"
 # as_posix() gives forward slashes, which SQLAlchemy accepts on Windows too
 DEFAULT_DATABASE_URL = f"sqlite:///{(DATA_DIR / 'inventory.db').as_posix()}"
-DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
+
+
+def _choose_database_url() -> str:
+    """Use DATABASE_URL only if it points to SQLite.
+
+    This app is built for SQLite (it uses SQLite-only rules such as a partial unique index).
+    Replit can add its own PostgreSQL database and set DATABASE_URL to it automatically;
+    that address is ignored here, so the app keeps using its own SQLite file.
+    """
+    url = os.getenv("DATABASE_URL", "").strip()
+    if not url:
+        return DEFAULT_DATABASE_URL
+    if url.startswith("sqlite"):
+        return url
+    print("Note: DATABASE_URL points to a non-SQLite database; using backend/data/inventory.db instead.")
+    return DEFAULT_DATABASE_URL
+
+
+DATABASE_URL = _choose_database_url()
 
 
 class Base(DeclarativeBase):
