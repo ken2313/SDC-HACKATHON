@@ -283,10 +283,10 @@ We used AI tools and declare them in the Technology Declaration:
 | Name           | Role                | GitHub                                              |
 | -------------- | ------------------- | --------------------------------------------------- |
 | Tatiana Razak  | Team Leader; AI and integration (RunPod) | [@tatyraz](https://github.com/tatyraz) |
-| **[TODO: full name]** | Backend and frontend (per git history) | [@TasnimElzanaty](https://github.com/TasnimElzanaty) |
-| **[TODO]**     | **[TODO]**          | **[TODO]**                                          |
-| **[TODO]**     | **[TODO]**          | **[TODO]**                                          |
-| **[TODO]**     | **[TODO]**          | **[TODO]**                                          |
+| TASNIM ELSAYED | Backend and frontend (per git history) | [@TasnimElzanaty](https://github.com/TasnimElzanaty) |
+| MEHREEN MEHRAJ | Frontend (Replit) and Pitching         | **[TODO]**                                          |
+| YESNA FAISAL   | Frontend & Slides & Document        | **[TODO]**                                          |
+| TAN KEN POH    | Pitching on Prototype Demo           | **[TODO]**                                          |
 
 The repository is owned by [@ken2313](https://github.com/ken2313). **[TODO: confirm each member's name and role.]**
 
