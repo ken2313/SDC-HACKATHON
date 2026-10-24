@@ -24,7 +24,7 @@ Built for the **Orbyte Smart SME Challenge: Less Busywork, Better Business** (sp
 | GitHub Repository | https://github.com/ken2313/SDC-HACKATHON                   |
 | Replit Project    | https://smart-inventory-sdc.replit.app                     |
 | Live Demo         | https://smart-inventory-sdc.replit.app                     |
-| RunPod Endpoint   | RunPod Serverless endpoint (Load Balancer type), protected by an API key and token, so not a public URL. Proof of use in `submission/` |
+| RunPod Endpoint   | RunPod Serverless endpoint (Load Balancer type), protected by an API key and token, so not a public URL. Proof of use in `submission/SDC2026_Bashamel_Runpod_POU` |
 | Slide Deck        | https://canva.link/7dbl8mch23qoyl0                         |
 | Demo Video        | https://youtu.be/hEYaJW694Vw                                             |
 
