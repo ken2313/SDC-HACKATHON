@@ -115,7 +115,7 @@ Only the anomaly detector is AI. Low-stock alerts, supplier selection and purcha
 │   └── src/                   # api/, components/, context/, pages/, utils/
 ├── docs/
 │   └── DECISIONS.md           # Why things are built this way
-├── submission/                # Required submission documents (add before deadline)
+├── submission/                # Required submission documents
 │   ├── SDC2026_Bashamel_Preliminary.pdf
 │   ├── SDC2026_Bashamel_TechDeclaration.pdf
 │   ├── SDC2026_Bashamel_Replit_POU.pdf
@@ -126,6 +126,8 @@ Only the anomaly detector is AI. Low-stock alerts, supplier selection and purcha
 ├── LICENSE
 └── README.md
 ```
+
+> **Note on layout:** the hackathon template uses `src/` and `runpod/`. We use `backend/` and `frontend/` instead of `src/` (the app is started with `run.sh`), `ai/` instead of `runpod/` (our RunPod Serverless service and its Dockerfile), and `backend/tests/` instead of `tests/`.
 
 ### Architecture
 
@@ -258,7 +260,7 @@ We used AI tools and declare them in the Technology Declaration:
 - **Being honest about AI.** We separated the autoencoder from rule-based features and the statistical forecast, and compared the model against a simple baseline instead of assuming the GPU model wins.
 - **Cost and cold starts.** A Pod bills every hour it is on, so we moved the model to a RunPod Serverless endpoint that scales to zero. The price is a cold start on the first request, which is why the AI check runs in the background. Campus Wi-Fi also blocked the RunPod proxy during early Pod testing.
 - **Honest model limits.** In live testing the model flagged a normal removal of a low-volume product as Highly Unusual. This is why flags are only prompts for a human to check.
-- **[TODO]** What did the team learn? Add your own reflections.
+- **What we learned.** None of us had deployed a model on a GPU before, so we learned the full path from a trained PyTorch model to a working service: packaging it with Docker, serving it with FastAPI, and calling it securely from the backend with a token and API key. We started on a RunPod GPU Pod, found it costs money for every hour it is on, and moved to RunPod Serverless, where it scales to zero but has slow cold starts. That taught us to run the AI check in the background so it can never block stock updates. We also learned to test claims honestly: a simple z-score baseline matched our autoencoder, so we report that instead of overselling the AI.
 
 ## Known Limitations
 
@@ -284,9 +286,9 @@ We used AI tools and declare them in the Technology Declaration:
 | -------------- | ------------------- | --------------------------------------------------- |
 | Tatiana Razak  | Team Leader; AI and integration (RunPod) | [@tatyraz](https://github.com/tatyraz) |
 | TASNIM ELSAYED | Backend and frontend (per git history) | [@TasnimElzanaty](https://github.com/TasnimElzanaty) |
-| MEHREEN MEHRAJ | Frontend (Replit) and Pitching         | **[TODO]**                                          |
-| YESNA FAISAL   | Frontend & Slides & Document        | **[TODO]**                                          |
-| TAN KEN POH    | Pitching on Prototype Demo           | **[TODO]**                                          |
+| MEHREEN MEHRAJ | Frontend (Replit) and Prototype Pitching         | **[TODO]**                                          |
+| YESNA FAISAL   | Video & SLide Production & Forms/Documents Submissions       | @yesnafaizal14                                          |
+| TAN KEN POH    | Pitching on Prototype Demo           | @ken2313                                          |
 
 The repository is owned by [@ken2313](https://github.com/ken2313). **[TODO: confirm each member's name and role.]**
 
@@ -296,13 +298,13 @@ The repository is owned by [@ken2313](https://github.com/ken2313). **[TODO: conf
 
 - [x] Team name, domain (Domain 1 / Domain 2) and SDG track filled in
 - [x] Slide deck link added
-- [ ] Demo video link added
-- [ ] Replit used, with proof of use in `submission/`
-- [ ] RunPod used, with proof of use in `submission/`
-- [ ] Preliminary submission completed (`SDC2026_Bashamel_Preliminary.pdf`)
-- [ ] Technology declaration completed (`SDC2026_Bashamel_TechDeclaration.pdf`)
-- [ ] Submission files renamed with your team name (replace `TeamName`)
-- [ ] "How to Run" steps verified
+- [x] Demo video link added
+- [x] Replit used, with proof of use in `submission/`
+- [x] RunPod used, with proof of use in `submission/`
+- [x] Preliminary submission completed (`SDC2026_Bashamel_Preliminary.pdf`)
+- [x] Technology declaration completed (`SDC2026_Bashamel_TechDeclaration.pdf`)
+- [x] Submission files renamed with your team name (replace `TeamName`)
+- [x] "How to Run" steps verified
 - [x] No API keys or secrets committed to the repository
 
 ## License
