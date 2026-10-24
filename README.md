@@ -288,7 +288,7 @@ We used AI tools and declare them in the Technology Declaration:
 | TASNIM ELSAYED | Backend(Python) and frontend  | [@TasnimElzanaty](https://github.com/TasnimElzanaty) |
 | MEHREEN MEHRAJ | Frontend (Replit) and Prototype Pitching         | [@MehreenMehraj](https://github.com/MehreenMehraj)                                        |
 | YESNA FAISAL   | Video & Slides Production & Forms/Documents Submissions       |   [@yesnafaisal14](https://github.com/yesnafaisal14)                                      |
-| TAN KEN POH    | Pitching on Prototype Demo           | [@ken2313](https://github.com/ken2313)                                          |
+| TAN KEN POH    | Pitching on Prototype Demo & Doc Submission & GitHub Repo Maintenance          | [@ken2313](https://github.com/ken2313)                                          |
 
 The repository is owned by [@ken2313](https://github.com/ken2313). 
 
