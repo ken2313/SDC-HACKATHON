@@ -1,6 +1,6 @@
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.inventory import UTCDateTime  # sends times with "Z" so the browser shows Malaysia time
 
 REVIEW_NOTE = "Potential anomaly for human review, not a confirmed error."
 
@@ -29,9 +29,9 @@ class AnomalyFlagOut(BaseModel):
     reviewed: bool
     reviewed_by: int | None
     reviewed_by_name: str | None
-    reviewed_at: datetime | None
+    reviewed_at: UTCDateTime | None
     review_note: str | None
-    created_at: datetime
+    created_at: UTCDateTime
     note: str = REVIEW_NOTE
 
 
