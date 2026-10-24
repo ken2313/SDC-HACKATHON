@@ -26,7 +26,7 @@ Built for the **Orbyte Smart SME Challenge: Less Busywork, Better Business** (sp
 | Live Demo         | https://smart-inventory-sdc.replit.app                     |
 | RunPod Endpoint   | RunPod Serverless endpoint (Load Balancer type), protected by an API key and token, so not a public URL. Proof of use in `submission/` |
 | Slide Deck        | https://canva.link/7dbl8mch23qoyl0                         |
-| Demo Video        | **[TODO]**                                                 |
+| Demo Video        | https://youtu.be/hEYaJW694Vw                                             |
 
 **Demo sign-in:** `business123@gmail.com` / `SISO67#` (a synthetic demo account, not a real mailbox).
 
