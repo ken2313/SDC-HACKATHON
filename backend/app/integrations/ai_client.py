@@ -6,9 +6,12 @@ Rules:
 - Scoring is read-only: it never changes stock. The backend stores request_id,
   so a retried request can never double-change stock.
 - Config comes from environment variables, never hard-coded:
-    AI_BASE_URL      e.g. https://<pod-id>-8000.proxy.runpod.net
+    AI_BASE_URL      a Pod:        https://<pod-id>-8000.proxy.runpod.net
+                     or Serverless: https://<endpoint-id>.api.runpod.ai
     INFERENCE_TOKEN  secret, sent as the x-api-token header
-    AI_TIMEOUT_S     optional, default 2.5 seconds
+    RUNPOD_API_KEY   only for Serverless: sent as "Authorization: Bearer <key>"
+    AI_TIMEOUT_S     optional, default 2.5 seconds (use about 90 for Serverless,
+                     because a worker that was asleep needs time to start)
 """
 import json
 import os
@@ -92,6 +95,9 @@ def score_movement(movement):
     headers = {"Content-Type": "application/json",
                "x-api-token": token,
                "User-Agent": "siso-ai-client/1.0"}  # RunPod proxy blocks default urllib agent
+    runpod_key = os.environ.get("RUNPOD_API_KEY", "")
+    if runpod_key:  # RunPod Serverless endpoints require the account's API key
+        headers["Authorization"] = f"Bearer {runpod_key}"
 
     reason = "unknown error"
     for attempt in range(MAX_RETRIES + 1):

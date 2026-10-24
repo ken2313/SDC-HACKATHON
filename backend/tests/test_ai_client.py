@@ -21,10 +21,12 @@ class FakeAI(BaseHTTPRequestHandler):
     mode = "ok"
     calls = 0
     last_token = None
+    last_auth = None
 
     def do_POST(self):
         FakeAI.calls += 1
         FakeAI.last_token = self.headers.get("x-api-token")
+        FakeAI.last_auth = self.headers.get("Authorization")
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         try:
             if FakeAI.mode == "fail_then_ok" and FakeAI.calls == 1:
@@ -68,7 +70,7 @@ class TestAIClient(unittest.TestCase):
         cls.server.shutdown()
 
     def setUp(self):
-        FakeAI.mode, FakeAI.calls, FakeAI.last_token = "ok", 0, None
+        FakeAI.mode, FakeAI.calls, FakeAI.last_token, FakeAI.last_auth = "ok", 0, None, None
         self.env = mock.patch.dict(os.environ, {"AI_BASE_URL": self.url,
                                                 "INFERENCE_TOKEN": "test-token",
                                                 "AI_TIMEOUT_S": "2"})
@@ -84,6 +86,18 @@ class TestAIClient(unittest.TestCase):
         self.assertEqual(r["request_id"], "t-1")
         self.assertIn("round_trip_ms", r)
         self.assertEqual(FakeAI.last_token, "test-token")
+
+    def test_no_runpod_key_means_no_authorization_header(self):
+        os.environ.pop("RUNPOD_API_KEY", None)
+        ai_client.score_movement(GOOD_MOVEMENT)
+        self.assertIsNone(FakeAI.last_auth)
+
+    def test_runpod_key_is_sent_for_serverless(self):
+        with mock.patch.dict(os.environ, {"RUNPOD_API_KEY": "rp-test-key"}):
+            r = ai_client.score_movement(GOOD_MOVEMENT)
+        self.assertEqual(r["status"], "Highly Unusual")
+        self.assertEqual(FakeAI.last_auth, "Bearer rp-test-key")
+        self.assertEqual(FakeAI.last_token, "test-token")  # the shared token is still sent
 
     # --- invalid input ---
     def test_invalid_input_is_rejected_without_calling_ai(self):

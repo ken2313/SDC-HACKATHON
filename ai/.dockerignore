@@ -1,0 +1,9 @@
+data/
+__pycache__/
+*.pyc
+*.md
+train.py
+data_gen.py
+latency_test.py
+test_request.py
+start_server.sh

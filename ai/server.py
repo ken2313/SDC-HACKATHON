@@ -65,6 +65,13 @@ def health():
         "model_version": config["model_version"],
     }
 
+@app.get("/ping")
+def ping():
+    """Health check for RunPod Serverless (load-balancer endpoints).
+    The model is loaded before the server starts listening, so once this answers,
+    the worker is ready to score movements."""
+    return {"status": "healthy"}
+
 @app.post("/score")
 def score_movement(req: MovementRequest, x_api_token: str = Header(default="")):
     if API_TOKEN and x_api_token != API_TOKEN:
@@ -109,3 +116,11 @@ def score_movement(req: MovementRequest, x_api_token: str = Header(default="")):
             "expected_range": [round(low, 1), round(high, 1)],
             "inference_ms": round(inference_ms, 2),
             "note": "Potential anomaly for human review, not a confirmed error."}
+
+
+if __name__ == "__main__":
+    # RunPod Serverless starts the worker with "python server.py" and tells it which
+    # port to use in $PORT. (On a Pod, start_server.sh runs uvicorn on port 8000 instead.)
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "80")))
